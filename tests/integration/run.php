@@ -359,6 +359,10 @@ function ofwc_it_phase2_pdf(): void {
 	$pdf = $generator->render_pdf( $order, 'of-it-pdf' );
 	ofwc_it_check( str_starts_with( $pdf, '%PDF' ), 'render_pdf returns a PDF' );
 	$text = '';
+	// The PDF parser is a development package; the plugin itself no longer loads vendor/autoload.php.
+	if ( ! class_exists( '\Smalot\PdfParser\Parser' ) && is_readable( OFWC_PATH . 'vendor/autoload.php' ) ) {
+		require_once OFWC_PATH . 'vendor/autoload.php';
+	}
 	if ( class_exists( '\Smalot\PdfParser\Parser' ) ) {
 		$text = (string) ( new \Smalot\PdfParser\Parser() )->parseContent( $pdf )->getText();
 	}
@@ -652,12 +656,172 @@ function ofwc_it_phase3_config(): void {
 	ofwc_it_check( null === $repo->get( 'of-cfg-a' ) && null === $repo->get( 'of-cfg-b' ), 'config: temporary statuses removed' );
 }
 
+/**
+ * Phase 4: lifecycle. Parking and restoring in batches without touching stock, the On hold guard, and the
+ * uninstall clean-up (run inside a database transaction that is rolled back).
+ */
+function ofwc_it_phase4_lifecycle(): void {
+	// phpcs:disable WordPress.DB -- Test queries against the lab database, ids are integers.
+	global $wpdb;
+	$repo = new Repository();
+	ofwc_it_cleanup( $repo );
+	if ( null !== $repo->get( 'of-lc-a' ) ) {
+		$repo->remove( 'of-lc-a' );
+	}
+	$repo->save(
+		array(
+			'slug'  => 'of-lc-a',
+			'label' => 'OF Lifecycle A',
+		)
+	);
+	( new Registrar( $repo ) )->register_post_statuses();
+
+	$product = new WC_Product_Simple();
+	$product->set_name( 'OF lifecycle product' );
+	$product->set_regular_price( '10' );
+	$product->set_manage_stock( true );
+	$product->set_stock_quantity( 50 );
+	$product->save();
+
+	$count = 60;
+	$ids   = array();
+	for ( $i = 0; $i < $count; $i++ ) {
+		$order = ofwc_it_create_order();
+		$order->add_product( $product, 1 );
+		$order->set_status( 'of-lc-a' );
+		$order->save();
+		$ids[] = $order->get_id();
+	}
+	wc_update_product_stock( $product, 50, 'set' );
+	$orders = new OrderFlowWC\Migration\Orders( $repo );
+
+	try {
+		ofwc_it_check( array_sum( $orders->counts() ) === $count, 'lifecycle: all test orders sit in the custom status' );
+
+		// Park in several batches under a tiny time budget; stock must not move.
+		$orders->begin_parking();
+		$batches = 0;
+		do {
+			$result = $orders->park_batch( 0.05 );
+			++$batches;
+		} while ( $result['remaining'] > 0 && $batches < 200 );
+		$parked  = 0;
+		$reduced = 0;
+		foreach ( $ids as $id ) {
+			$o = wc_get_order( $id );
+			if ( $o instanceof WC_Order && 'on-hold' === $o->get_status() && 'of-lc-a' === $o->get_meta( OrderFlowWC\Migration\Orders::META ) ) {
+				++$parked;
+			}
+			if ( $o instanceof WC_Order && $o->get_data_store()->get_stock_reduced( $id ) ) {
+				++$reduced;
+			}
+		}
+		wp_cache_flush();
+		$fresh = wc_get_product( $product->get_id() );
+		ofwc_it_check( $batches > 1, 'lifecycle: parking needed several batches (' . $batches . ')' );
+		ofwc_it_check( $count === $parked, 'lifecycle: every order parked in On hold with its old status saved' );
+		ofwc_it_check( 0 === $reduced && $fresh instanceof WC_Product && 50 === $fresh->get_stock_quantity(), 'lifecycle: parking did not touch stock' );
+
+		// One parked order is completed while the plugin is "inactive": it must not be pulled back.
+		$completed = wc_get_order( $ids[0] );
+		if ( $completed instanceof WC_Order ) {
+			$completed->set_status( 'completed' );
+			$completed->save();
+		}
+		wp_cache_flush();
+		$before_restore = wc_get_product( $product->get_id() );
+		$stock_before   = $before_restore instanceof WC_Product ? $before_restore->get_stock_quantity() : -1;
+
+		$jobs = 0;
+		$skip = array();
+		do {
+			$res  = $orders->restore_batch( $skip, 0.05 );
+			$skip = $res['skip'];
+			++$jobs;
+		} while ( ! $res['done'] && $jobs < 200 );
+		$back  = 0;
+		$still = 0;
+		foreach ( $ids as $id ) {
+			$o = wc_get_order( $id );
+			if ( $o instanceof WC_Order && 'of-lc-a' === $o->get_status() && '' === (string) $o->get_meta( OrderFlowWC\Migration\Orders::META ) ) {
+				++$back;
+			}
+			if ( $o instanceof WC_Order && 'completed' === $o->get_status() && '' === (string) $o->get_meta( OrderFlowWC\Migration\Orders::META ) ) {
+				++$still;
+			}
+		}
+		wp_cache_flush();
+		$fresh = wc_get_product( $product->get_id() );
+		ofwc_it_check( $jobs > 1, 'lifecycle: restore needed several jobs (' . $jobs . ')' );
+		ofwc_it_check( $count - 1 === $back, 'lifecycle: parked orders are back in their status' );
+		ofwc_it_check( 1 === $still, 'lifecycle: an order completed in the meantime stays completed and loses the marker' );
+		ofwc_it_check( $fresh instanceof WC_Product && $stock_before === $fresh->get_stock_quantity(), 'lifecycle: restoring did not touch stock' );
+
+		// Uninstall clean-up inside a transaction that is rolled back.
+		$kept_options = array( 'ofwcommerce_foreign_option', 'my_ofwc_option', 'woocommerce_ofwcx_settings' );
+		$wpdb->query( 'START TRANSACTION' );
+		try {
+			foreach ( $kept_options as $name ) {
+				update_option( $name, 'keep' );
+			}
+			update_option( 'ofwc_restore_pending', '1' );
+			set_transient( 'ofwc_tn_probe', '1', 600 );
+			update_option( 'woocommerce_ofwc_of-lc-a_email_settings', array( 'enabled' => 'yes' ) );
+			$items_before = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE order_id IN (' . implode( ',', array_map( 'intval', $ids ) ) . ')', $wpdb->prefix . 'woocommerce_order_items' ) );
+
+			OrderFlowWC\Migration\Uninstaller::clean_site();
+
+			$hpos        = Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+			$marks       = implode( ',', array_map( 'intval', $ids ) );
+			$on_hold     = $hpos
+				? (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE status = 'wc-on-hold' AND id IN ($marks)", $wpdb->prefix . 'wc_orders' ) )
+				: (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE post_status = 'wc-on-hold' AND ID IN ($marks)", $wpdb->posts ) );
+			$leftover    = $hpos
+				? (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE status = 'wc-of-lc-a' AND id IN ($marks)", $wpdb->prefix . 'wc_orders' ) )
+				: (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE post_status = 'wc-of-lc-a' AND ID IN ($marks)", $wpdb->posts ) );
+			$meta_rows   = $hpos
+				? (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE meta_key = %s AND meta_value = 'of-lc-a' AND order_id IN ($marks)", $wpdb->prefix . 'wc_orders_meta', OrderFlowWC\Migration\Orders::META ) )
+				: (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE meta_key = %s AND meta_value = 'of-lc-a' AND post_id IN ($marks)", $wpdb->postmeta, OrderFlowWC\Migration\Orders::META ) );
+			$notes       = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE comment_type = 'order_note' AND comment_content LIKE %s AND comment_post_ID IN ($marks)", $wpdb->comments, '%plugin was removed%' ) );
+			$items_after = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE order_id IN ($marks)", $wpdb->prefix . 'woocommerce_order_items' ) );
+			$own_options = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s', $wpdb->options, $wpdb->esc_like( 'ofwc_' ) . '%', $wpdb->esc_like( '_transient_ofwc_' ) . '%', $wpdb->esc_like( 'woocommerce_ofwc_' ) . '%' ) );
+			$kept        = 0;
+			foreach ( $kept_options as $name ) {
+				$kept += (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE option_name = %s', $wpdb->options, $name ) );
+			}
+			$still_completed = 'wc-completed' === ( $hpos
+				? $wpdb->get_var( $wpdb->prepare( 'SELECT status FROM %i WHERE id = %d', $wpdb->prefix . 'wc_orders', $ids[0] ) )
+				: $wpdb->get_var( $wpdb->prepare( 'SELECT post_status FROM %i WHERE ID = %d', $wpdb->posts, $ids[0] ) ) );
+
+			ofwc_it_check( $count - 1 === $on_hold, 'uninstall: orders left in a custom status are in On hold (' . $on_hold . ')' );
+			ofwc_it_check( 0 === $leftover, 'uninstall: no order is left in the custom status' );
+			ofwc_it_check( $count - 1 === $meta_rows, 'uninstall: the previous status is saved in the order meta' );
+			ofwc_it_check( $count - 1 === $notes, 'uninstall: every moved order has a note' );
+			ofwc_it_check( $items_before === $items_after, 'uninstall: order items are untouched' );
+			ofwc_it_check( $still_completed, 'uninstall: other orders keep their status' );
+			ofwc_it_check( 0 === $own_options, 'uninstall: own options, transients and email settings are gone' );
+			ofwc_it_check( count( $kept_options ) === $kept, 'uninstall: options of other plugins with similar names stay' );
+		} finally {
+			$wpdb->query( 'ROLLBACK' );
+			wp_cache_flush();
+		}
+	} finally {
+		ofwc_it_delete_test_orders();
+		$product->delete( true );
+		$repo->remove( 'of-lc-a' );
+		Repository::flush_cache();
+		delete_option( OrderFlowWC\Migration\Orders::PROGRESS );
+	}
+	// phpcs:enable WordPress.DB
+}
+
 try {
 	ofwc_it_phase1_statuses();
 	ofwc_it_phase2_transitions();
 	ofwc_it_phase2_emails();
 	ofwc_it_phase2_pdf();
 	ofwc_it_phase3_config();
+	ofwc_it_phase4_lifecycle();
 } finally {
 	ofwc_it_cleanup( new Repository() );
 }

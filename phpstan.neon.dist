@@ -6,6 +6,8 @@ parameters:
 		- order-flow-for-woocommerce.php
 		- uninstall.php
 		- includes
+	scanDirectories:
+		- vendor-prefixed
 	bootstrapFiles:
 		- tests/phpstan-bootstrap.php
 	scanFiles:

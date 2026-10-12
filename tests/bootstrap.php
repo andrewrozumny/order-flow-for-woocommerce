@@ -39,14 +39,32 @@ if ( ! class_exists( 'WP_Error' ) ) {
 		private string $message;
 
 		/**
+		 * Error data.
+		 *
+		 * @var mixed
+		 */
+		private $data;
+
+		/**
 		 * Constructor.
 		 *
 		 * @param string $code    Error code.
 		 * @param string $message Error message.
+		 * @param mixed  $data    Error data.
 		 */
-		public function __construct( string $code = '', string $message = '' ) {
+		public function __construct( string $code = '', string $message = '', $data = null ) {
 			$this->code    = $code;
 			$this->message = $message;
+			$this->data    = $data;
+		}
+
+		/**
+		 * Error data.
+		 *
+		 * @return mixed
+		 */
+		public function get_error_data() {
+			return $this->data;
 		}
 
 		/**

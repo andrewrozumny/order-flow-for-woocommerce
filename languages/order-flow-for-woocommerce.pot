@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-12T21:22:17+00:00\n"
+"POT-Creation-Date: 2026-10-12T22:09:38+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: order-flow-for-woocommerce\n"
@@ -35,78 +35,107 @@ msgstr ""
 msgid "Andrew Rozumny"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:90
-#: includes/Admin/Deactivation.php:122
+#: includes/Admin/Deactivation.php:97
+#: includes/Admin/Deactivation.php:134
+#: includes/Admin/Deactivation.php:262
 msgid "Deactivate Order Flow for WooCommerce"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:91
-#: includes/Admin/Deactivation.php:129
+#: includes/Admin/Deactivation.php:98
+#: includes/Admin/Deactivation.php:141
 msgid "Deactivate"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:102
+#: includes/Admin/Deactivation.php:109
 msgid "Deactivate Order Flow"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:115
+#: includes/Admin/Deactivation.php:122
 #: includes/Admin/Page.php:213
 msgid "You do not have permission to access this page."
 msgstr ""
 
-#: includes/Admin/Deactivation.php:125
+#: includes/Admin/Deactivation.php:137
 msgid "No orders are in a custom status, so the plugin can be deactivated right away."
 msgstr ""
 
-#: includes/Admin/Deactivation.php:134
+#: includes/Admin/Deactivation.php:146
 msgid "These orders are in a status created by this plugin:"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:135
+#: includes/Admin/Deactivation.php:147
 #: includes/Admin/StatusesTab.php:123
 msgid "Status"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:135
+#: includes/Admin/Deactivation.php:147
 #: includes/Admin/StatusesTab.php:126
 msgid "Orders"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:145
+#: includes/Admin/Deactivation.php:157
 msgid "What should happen to these orders?"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:146
+#: includes/Admin/Deactivation.php:158
 msgid "Keep orders in their statuses"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:147
-msgid "While the plugin is inactive WooCommerce does not know these statuses, so the orders will be missing from the usual order lists. The orders are not lost: they come back as soon as you activate the plugin again."
+#: includes/Admin/Deactivation.php:159
+msgid "While the plugin is inactive WooCommerce does not know these statuses, so the orders will be missing from the usual order lists. The orders are not lost: they come back as soon as you activate the plugin again. If you delete the plugin instead, they are moved to On hold."
 msgstr ""
 
-#: includes/Admin/Deactivation.php:148
+#: includes/Admin/Deactivation.php:160
 msgid "Move them to On hold now and restore them when I reactivate"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:149
-msgid "Every order gets a note, is moved to On hold and stays visible in WooCommerce. When you activate the plugin again each one returns to its previous status. No emails are sent for these moves."
+#: includes/Admin/Deactivation.php:161
+msgid "Every order gets a note, is moved to On hold and stays visible in WooCommerce. Nothing else changes: no emails are sent and stock levels, sales counts and coupon usage stay as they are. Large shops see a progress page; keep it open until it finishes. When you activate the plugin again, each order that is still in On hold returns to its previous status in the background. An order whose status you changed in the meantime keeps its new status."
 msgstr ""
 
-#: includes/Admin/Deactivation.php:151
+#: includes/Admin/Deactivation.php:163
 msgid "Deactivate plugin"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:152
+#: includes/Admin/Deactivation.php:164
+#: includes/Admin/Deactivation.php:292
 #: includes/Admin/StatusesTab.php:364
 msgid "Cancel"
 msgstr ""
 
-#: includes/Admin/Deactivation.php:161
+#: includes/Admin/Deactivation.php:215
+#: includes/Admin/Deactivation.php:234
 #: includes/Admin/DocumentsTab.php:129
 #: includes/Admin/ImportExport.php:155
 #: includes/Admin/StatusesTab.php:447
 #: includes/Admin/TransitionsTab.php:186
 msgid "You do not have permission to do this."
+msgstr ""
+
+#. translators: 1: orders moved so far, 2: orders in custom statuses when the move started.
+#: includes/Admin/Deactivation.php:268
+#, php-format
+msgid "Moved %1$s of %2$s orders to On hold."
+msgstr ""
+
+#: includes/Admin/Deactivation.php:275
+msgid "Keep this page open. The plugin is deactivated after the last order."
+msgstr ""
+
+#: includes/Admin/Deactivation.php:276
+msgid "Continue"
+msgstr ""
+
+#. translators: %s: number of orders.
+#: includes/Admin/Deactivation.php:283
+#, php-format
+msgid "%s order could not be moved and stays in its status."
+msgid_plural "%s orders could not be moved and stay in their statuses."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Admin/Deactivation.php:290
+msgid "Deactivate anyway"
 msgstr ""
 
 #: includes/Admin/DocumentsTab.php:60
@@ -709,16 +738,64 @@ msgstr ""
 msgid "system"
 msgstr ""
 
+#: includes/Migration/Deletions.php:135
+msgid "This status is not being deleted."
+msgstr ""
+
+#: includes/Migration/Deletions.php:191
+msgid "Some orders could not be moved to the target status. The status was not deleted."
+msgstr ""
+
+#: includes/Migration/Deletions.php:243
+msgid "Order Flow: the previous status was deleted."
+msgstr ""
+
+#: includes/Migration/Lifecycle.php:106
+msgid "Order Flow was deactivated for the whole network. Orders in its custom statuses were not moved and stay in their statuses; WooCommerce does not list them while the plugin is inactive. Activate the plugin again to see them."
+msgstr ""
+
+#. translators: %s: number of orders.
+#: includes/Migration/Lifecycle.php:117
+#, php-format
+msgid "Order Flow was deactivated. %s order is in a custom status; it was not moved and WooCommerce does not list it while the plugin is inactive. Activate the plugin again to see it, or use the Deactivate screen in the admin to move such orders to On hold."
+msgid_plural "Order Flow was deactivated. %s orders are in custom statuses; they were not moved and WooCommerce does not list them while the plugin is inactive. Activate the plugin again to see them, or use the Deactivate screen in the admin to move such orders to On hold."
+msgstr[0] ""
+msgstr[1] ""
+
 #. translators: %s: status slug.
-#: includes/Migration/Orders.php:91
+#: includes/Migration/Orders.php:352
 #, php-format
 msgid "Order Flow: moved to On hold because the plugin is being deactivated. It will return to \"%s\" when the plugin is activated again."
 msgstr ""
 
+#: includes/Migration/Orders.php:379
+msgid "Order Flow: the status changed while the plugin was inactive, not restored."
+msgstr ""
+
 #. translators: %s: status slug.
-#: includes/Migration/Orders.php:150
+#: includes/Migration/Orders.php:390
 #, php-format
 msgid "Order Flow: restored to \"%s\" after the plugin was activated again."
+msgstr ""
+
+#. translators: %s: reason the PDF was not attached.
+#: includes/Pdf/Attachments.php:130
+#, php-format
+msgid "Order Flow: the status email was sent without the PDF document. %s"
+msgstr ""
+
+#: includes/Pdf/Attachments.php:205
+#: includes/Pdf/Attachments.php:216
+msgid "No writable temporary folder is available."
+msgstr ""
+
+#: includes/Pdf/Attachments.php:210
+#: includes/Pdf/Download.php:90
+msgid "The PDF could not be created."
+msgstr ""
+
+#: includes/Pdf/Attachments.php:223
+msgid "The temporary file could not be written."
 msgstr ""
 
 #: includes/Pdf/Buttons.php:66
@@ -753,10 +830,6 @@ msgstr ""
 msgid "You are not allowed to download this document."
 msgstr ""
 
-#: includes/Pdf/Download.php:90
-msgid "The PDF could not be created."
-msgstr ""
-
 #: includes/Placeholders.php:30
 msgid "Order number"
 msgstr ""
@@ -785,7 +858,11 @@ msgstr ""
 msgid "Order total"
 msgstr ""
 
-#: includes/Plugin.php:103
+#: includes/Plugin.php:112
+msgid "Order Flow for WooCommerce is paused because WooCommerce is active but did not load. It continues as soon as WooCommerce loads again."
+msgstr ""
+
+#: includes/Plugin.php:113
 msgid "Order Flow for WooCommerce needs WooCommerce to be installed and active."
 msgstr ""
 
@@ -989,25 +1066,25 @@ msgid "The slug of an existing status cannot be changed because orders reference
 msgstr ""
 
 #: includes/Statuses/Repository.php:295
-#: includes/Statuses/Repository.php:354
+#: includes/Statuses/Repository.php:360
 msgid "This status does not exist."
 msgstr ""
 
-#: includes/Statuses/Repository.php:361
+#: includes/Statuses/Repository.php:369
 msgid "Choose a status for the orders that are currently in this one."
 msgstr ""
 
-#: includes/Statuses/Repository.php:364
+#: includes/Statuses/Repository.php:372
 msgid "The chosen target status is not valid."
 msgstr ""
 
-#: includes/Statuses/Repository.php:393
-msgid "Some orders could not be moved to the target status. The status was not deleted."
-msgstr ""
-
-#: includes/Statuses/Repository.php:400
-msgid "Order Flow: the previous status was deleted."
-msgstr ""
+#. translators: %s: number of orders still to move.
+#: includes/Statuses/Repository.php:386
+#, php-format
+msgid "The status is being deleted. %s order is left to move; the rest happens in the background."
+msgid_plural "The status is being deleted. %s orders are left to move; the rest happens in the background."
+msgstr[0] ""
+msgstr[1] ""
 
 #: includes/Transitions/MetaBox.php:54
 msgid "Save the order first. Status changes and history appear here afterwards."

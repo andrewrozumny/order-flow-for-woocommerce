@@ -18,7 +18,7 @@ Requires WordPress 6.6+, PHP 8.1+, WooCommerce 9.0+. Tested up to WordPress 7.1 
 | Emails | One WooCommerce email per status for the customer and/or admin, with placeholders `{order_number}` `{status}` `{customer_name}` `{note}` `{order_date}` `{site_title}` `{order_total}` |
 | PDF documents | A document per status with logo, store details, items, totals and free text. Download on the order screen and in My Account, optional email attachment |
 | Configuration | Import and export as JSON (merge or replace) |
-| Safety | Deactivation keeps the statuses or moves orders to On hold and restores them later. A status with orders cannot be deleted without a target status |
+| Safety | Deactivation from the Plugins screen keeps the statuses or moves orders to On hold (in batches, with no emails and no stock changes) and restores them later. Other ways to deactivate never touch orders. Deleting the plugin parks orders in On hold and cleans up its data. A status with orders cannot be deleted without a target status |
 
 ### Transition policy
 
@@ -39,10 +39,10 @@ From source:
 ```bash
 git clone https://github.com/andrewrozumny/order-flow-for-woocommerce.git
 cd order-flow-for-woocommerce
-composer install --no-dev
+composer install
 ```
 
-`vendor/` holds dompdf, which generates the PDF documents, so `composer install --no-dev` is required when you run the plugin from a git clone. To build an installable zip (with `vendor/` inside):
+dompdf generates the PDF documents. `composer install` copies it, with its dependencies, into `vendor-prefixed/` under the `OrderFlowWC\Vendor\` namespace (Strauss, see `bin/prefix.sh`), so it cannot clash with another plugin that bundles the same libraries. Run `composer install` with the development packages when you run the plugin from a git clone. To build an installable zip (with `vendor-prefixed/` inside, without `vendor/`):
 
 ```bash
 bash bin/build-zip.sh   # writes dist/order-flow-for-woocommerce-<version>.zip
@@ -66,7 +66,7 @@ add_action(
 );
 ```
 
-Other hooks: `ofwc_email_attachments`, `ofwc_pdf_document_data`, `ofwc_admin_tabs`, `ofwc_mask_status_labels`, `ofwc_is_pro`.
+Other hooks: `ofwc_email_attachments`, `ofwc_pdf_document_data`, `ofwc_admin_tabs`, `ofwc_mask_status_labels`, `ofwc_is_pro`, `ofwc_batch_budget` (seconds one request spends on a batch of bulk order work, default 18).
 
 Template overrides in your theme:
 

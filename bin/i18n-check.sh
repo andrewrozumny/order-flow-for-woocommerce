@@ -11,7 +11,7 @@ SLUG="order-flow-for-woocommerce"
 
 out="$($WP_CLI i18n make-pot "wp-content/plugins/$SLUG" "wp-content/plugins/$SLUG/languages/$SLUG.pot" \
 	--slug="$SLUG" --domain="$SLUG" \
-	--exclude=vendor,tests,bin,docs,dist,assets-src,node_modules,.wordpress-org 2>&1)"
+	--exclude=vendor,vendor-prefixed,tests,bin,docs,dist,assets-src,node_modules,.wordpress-org 2>&1)"
 status=$?
 echo "$out"
 [ "$status" -eq 0 ] || { echo "FAIL: make-pot exited $status" >&2; exit 1; }

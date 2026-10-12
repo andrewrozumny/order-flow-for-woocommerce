@@ -65,4 +65,37 @@ final class Decisions {
 		}
 		return '' !== $slug && in_array( $slug, $known, true ) ? $slug : null;
 	}
+
+	public const RESTORE   = 'restore';
+	public const RELEASE   = 'release';
+	public const KEEP_HOLD = 'keep';
+
+	/**
+	 * What to do on reactivation with an order that carries the pre-deactivation meta.
+	 *
+	 * Only orders that are still in On hold (parked by the plugin) go back to their status. An order whose
+	 * status changed while the plugin was inactive is left alone and only loses the meta. A parked order
+	 * whose status no longer exists stays in On hold with its meta.
+	 *
+	 * @param string   $current Current order status without the wc- prefix.
+	 * @param mixed    $stored  Value of the pre-deactivation meta.
+	 * @param string[] $known   Slugs of the statuses that exist in the configuration.
+	 * @return 'restore'|'release'|'keep'
+	 */
+	public static function restore_action( string $current, $stored, array $known ): string {
+		if ( 'on-hold' !== $current ) {
+			return self::RELEASE;
+		}
+		return null === self::restore_target( $stored, $known ) ? self::KEEP_HOLD : self::RESTORE;
+	}
+
+	/**
+	 * Whether a time budget is used up.
+	 *
+	 * @param float $now      Current time in seconds.
+	 * @param float $deadline Deadline in seconds.
+	 */
+	public static function out_of_time( float $now, float $deadline ): bool {
+		return $now >= $deadline;
+	}
 }

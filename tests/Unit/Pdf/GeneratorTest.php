@@ -48,6 +48,52 @@ final class GeneratorTest extends TestCase {
 	}
 
 	/**
+	 * A different copy of dompdf already loaded in the process (another plugin, an old version) is ignored:
+	 * the document is built by the bundled, prefixed copy.
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
+	public function test_foreign_dompdf_in_process_is_not_used(): void {
+		// phpcs:ignore Squiz.PHP.Eval.Discouraged -- Declares a stand-in for another plugin's older dompdf.
+		eval( 'namespace Dompdf; class Dompdf { const VERSION = "0.8.0"; public function __construct() { throw new \\RuntimeException( "foreign dompdf used" ); } } class Options { public function __construct() { throw new \\RuntimeException( "foreign options used" ); } }' );
+		Functions\when( 'wp_upload_dir' )->justReturn(
+			array(
+				'basedir' => sys_get_temp_dir(),
+				'baseurl' => 'https://example.test/uploads',
+			)
+		);
+		Functions\when( 'wp_mkdir_p' )->alias( 'is_dir' );
+		Functions\when( 'trailingslashit' )->alias(
+			static function ( string $value ): string {
+				return rtrim( $value, '/' ) . '/';
+			}
+		);
+
+		$pdf = ( new Generator() )->pdf_from_html( '<html><body><p>Bundled copy OF-7</p></body></html>' );
+
+		$this->assertStringStartsWith( '%PDF', $pdf );
+		$this->assertStringContainsString( 'OF-7', ( new Parser() )->parseContent( $pdf )->getText() );
+		$this->assertSame( '0.8.0', \Dompdf\Dompdf::VERSION );
+		$this->assertTrue( class_exists( 'OrderFlowWC\\Vendor\\Dompdf\\Dompdf', false ) );
+	}
+
+	/**
+	 * Library classes load only for the prefixed namespace and only from the bundled folder.
+	 */
+	public function test_libraries_loader_answers_only_for_prefixed_namespace(): void {
+		$this->assertTrue( \OrderFlowWC\Pdf\Libraries::load() );
+		$this->assertFalse( class_exists( 'OrderFlowWC\\Vendor\\Nope\\Missing' ) );
+		$loaders = array_filter(
+			spl_autoload_functions(),
+			static function ( $loader ): bool {
+				return is_array( $loader ) && \OrderFlowWC\Pdf\Libraries::class === $loader[0];
+			}
+		);
+		$this->assertCount( 1, $loaders );
+	}
+
+	/**
 	 * The download name is "{title-slug}-{order number}.pdf".
 	 */
 	public function test_filename(): void {

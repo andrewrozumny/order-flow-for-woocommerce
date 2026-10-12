@@ -1,6 +1,6 @@
 <?php
 /**
- * Removes plugin options on uninstall. Orders and their meta are left untouched.
+ * Runs when the plugin is deleted: orders in custom statuses go to On hold, then the plugin's data is removed.
  *
  * @package OrderFlowWC
  */
@@ -11,6 +11,6 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-delete_option( 'ofwc_statuses' );
-delete_option( 'ofwc_transitions' );
-delete_option( 'ofwc_settings' );
+require_once __DIR__ . '/includes/autoload.php';
+
+\OrderFlowWC\Migration\Uninstaller::run();

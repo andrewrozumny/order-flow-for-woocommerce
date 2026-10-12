@@ -14,6 +14,7 @@
 		"dompdf/dompdf": "^3.1"
 	},
 	"require-dev": {
+		"brianhenryie/strauss": "^0.31.1",
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
 		"humanmade/psalm-plugin-wordpress": "^3.1",
 		"php-stubs/woocommerce-stubs": "*",
@@ -52,11 +53,32 @@
 		"i18n": "bash bin/i18n-check.sh",
 		"plugin-check": "bash bin/plugin-check.sh",
 		"matrix": "bash bin/matrix.sh",
-		"gates": "bash bin/gates.sh"
+		"gates": "bash bin/gates.sh",
+		"prefix": "bash bin/prefix.sh",
+		"post-install-cmd": [
+			"bash bin/prefix.sh --if-available"
+		],
+		"post-update-cmd": [
+			"bash bin/prefix.sh --if-available"
+		]
 	},
 	"autoload-dev": {
 		"psr-4": {
 			"OrderFlowWC\\Tests\\": "tests/"
+		}
+	},
+	"extra": {
+		"strauss": {
+			"target_directory": "vendor-prefixed",
+			"namespace_prefix": "OrderFlowWC\\Vendor\\",
+			"classmap_prefix": "OrderFlowWC_Vendor_",
+			"constant_prefix": "OFWC_VENDOR_",
+			"packages": [
+				"dompdf/dompdf"
+			],
+			"update_call_sites": false,
+			"delete_vendor_packages": false,
+			"include_modified_date": false
 		}
 	}
 }

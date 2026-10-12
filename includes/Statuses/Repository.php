@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Statuses;
 
-use OrderFlowWC\Value;
+use OrderFlowWC\Migration\Deletions;
 use WP_Error;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -342,90 +342,79 @@ final class Repository {
 	}
 
 	/**
-	 * Delete a status. Orders in it are moved to the target status first.
+	 * Delete a status. Orders in it are moved to the target status first, in batches.
+	 *
+	 * Without orders the status is removed at once. With orders it is marked "deleting" and stays registered; the first
+	 * batch runs now (about twenty seconds at most), the rest in the background, and the status is removed after the
+	 * last batch. In that case the result is a WP_Error with the code `ofwc_delete_pending`, which is not a failure.
+	 * Moving orders sends no emails to customers unless $notify is true, and never changes stock.
 	 *
 	 * @param string $slug   Slug without the wc- prefix.
 	 * @param string $target Target status slug (with or without the wc- prefix); required when orders exist.
+	 * @param bool   $notify Whether customers get the emails of the target status.
 	 * @return true|WP_Error
 	 */
-	public function delete( string $slug, string $target = '' ) {
+	public function delete( string $slug, string $target = '', bool $notify = false ) {
 		$all = $this->all();
 		if ( ! isset( $all[ $slug ] ) ) {
 			return new WP_Error( 'ofwc_status_missing', __( 'This status does not exist.', 'order-flow-for-woocommerce' ) );
 		}
 
-		$count = $this->count_orders( $slug );
+		$deletions = new Deletions( $this );
+		$count     = $this->count_orders( $slug );
 		if ( $count > 0 ) {
-			$target = str_starts_with( $target, 'wc-' ) ? substr( $target, 3 ) : $target;
-			if ( '' === $target ) {
-				return new WP_Error( 'ofwc_target_required', __( 'Choose a status for the orders that are currently in this one.', 'order-flow-for-woocommerce' ) );
+			if ( ! $deletions->is_deleting( $slug ) ) {
+				$target = str_starts_with( $target, 'wc-' ) ? substr( $target, 3 ) : $target;
+				if ( '' === $target ) {
+					return new WP_Error( 'ofwc_target_required', __( 'Choose a status for the orders that are currently in this one.', 'order-flow-for-woocommerce' ) );
+				}
+				if ( $target === $slug || ! array_key_exists( 'wc-' . $target, wc_get_order_statuses() ) || $deletions->is_deleting( $target ) ) {
+					return new WP_Error( 'ofwc_target_invalid', __( 'The chosen target status is not valid.', 'order-flow-for-woocommerce' ) );
+				}
+				$deletions->start( $slug, $target, $notify );
 			}
-			if ( $target === $slug || ! array_key_exists( 'wc-' . $target, wc_get_order_statuses() ) ) {
-				return new WP_Error( 'ofwc_target_invalid', __( 'The chosen target status is not valid.', 'order-flow-for-woocommerce' ) );
+			$result = $deletions->run( $slug );
+			if ( null !== $result['error'] ) {
+				return $result['error'];
 			}
-			$moved = $this->move_orders( $slug, $target );
-			if ( is_wp_error( $moved ) ) {
-				return $moved;
+			if ( ! $result['done'] ) {
+				$deletions->schedule( $slug );
+				return new WP_Error(
+					'ofwc_delete_pending',
+					sprintf(
+						/* translators: %s: number of orders still to move. */
+						_n( 'The status is being deleted. %s order is left to move; the rest happens in the background.', 'The status is being deleted. %s orders are left to move; the rest happens in the background.', $result['remaining'], 'order-flow-for-woocommerce' ),
+						number_format_i18n( $result['remaining'] )
+					)
+				);
 			}
+			return true;
 		}
 
-		unset( $all[ $slug ] );
-		$this->store( $all );
-		$this->remove_transitions_for( $slug );
+		$this->remove( $slug );
 		return true;
 	}
 
 	/**
-	 * Move every order from one status to another in batches.
+	 * Whether a status is waiting for its orders to move before it is removed.
 	 *
-	 * @param string $from Source slug.
-	 * @param string $to   Target slug.
-	 * @return true|WP_Error
+	 * @param string $slug Slug without the wc- prefix.
 	 */
-	private function move_orders( string $from, string $to ) {
-		$previous = null;
-		do {
-			$ids = $this->order_ids( 'wc-' . $from, self::BATCH_SIZE );
-			if ( array() === $ids ) {
-				return true;
-			}
-			if ( $ids === $previous ) {
-				return new WP_Error( 'ofwc_move_failed', __( 'Some orders could not be moved to the target status. The status was not deleted.', 'order-flow-for-woocommerce' ) );
-			}
-			$previous = $ids;
-
-			foreach ( $ids as $order_id ) {
-				$order = wc_get_order( $order_id );
-				if ( $order instanceof \WC_Order ) {
-					$order->update_status( $to, __( 'Order Flow: the previous status was deleted.', 'order-flow-for-woocommerce' ) );
-				}
-			}
-		} while ( true );
+	public function is_deleting( string $slug ): bool {
+		return ( new Deletions( $this ) )->is_deleting( $slug );
 	}
 
 	/**
-	 * IDs of orders in a status.
+	 * Remove a status from the configuration together with the transition rules that mention it.
+	 * Orders are not touched: use delete() for that.
 	 *
-	 * @param string $status Status with the wc- prefix.
-	 * @param int    $limit  Maximum number of IDs.
-	 * @return int[]
+	 * @param string $slug Slug without the wc- prefix.
 	 */
-	private function order_ids( string $status, int $limit ): array {
-		$found = wc_get_orders(
-			array(
-				'status' => $status,
-				'limit'  => $limit,
-				'return' => 'ids',
-			)
-		);
-		$ids   = array();
-		foreach ( is_array( $found ) ? $found : array() as $item ) {
-			$id = Value::order_id( $item );
-			if ( null !== $id ) {
-				$ids[] = $id;
-			}
-		}
-		return $ids;
+	public function remove( string $slug ): void {
+		$all = $this->all();
+		unset( $all[ $slug ] );
+		$this->store( $all );
+		$this->remove_transitions_for( $slug );
 	}
 
 	/**

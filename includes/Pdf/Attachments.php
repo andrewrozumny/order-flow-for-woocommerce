@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OrderFlowWC\Pdf;
 
 use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Value;
 use WC_Order;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -17,15 +18,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Implements the `ofwc_email_attachments` filter: renders the document into uploads/ofwc-tmp/
- * under a random name and deletes the file at shutdown.
+ * Implements the `ofwc_email_attachments` filter: renders the document into a temporary file named after
+ * the document, in a random subfolder.
+ *
+ * The folder is the system temporary directory (outside the web root). When that is not writable the
+ * fallback is `uploads/ofwc-tmp/`, protected for both Apache 2.2 and 2.4 and with an index file. The file is
+ * deleted as soon as `wp_mail` reports success or failure; a daily cron event removes anything older than a
+ * day (a queueing SMTP plugin, a request that died). When no folder can be written, the email goes out
+ * without the document and a note on the order says why.
  *
  * @phpstan-import-type Status from Repository
  */
 final class Attachments {
 
-	public const DIR     = 'ofwc-tmp';
-	public const MAX_AGE = DAY_IN_SECONDS;
+	public const DIR        = 'ofwc-tmp';
+	public const MAX_AGE    = DAY_IN_SECONDS;
+	public const CRON_HOOK  = 'ofwc_cleanup_tmp';
+	public const HTACCESS   = "<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nDeny from all\n</IfModule>\n";
+	public const INDEX_FILE = "<?php\n// Silence is golden.\n";
 
 	/**
 	 * PDF renderer.
@@ -42,20 +52,36 @@ final class Attachments {
 	private Repository $repository;
 
 	/**
-	 * Files to delete at shutdown.
+	 * Files created in this request that mail has not reported on yet.
 	 *
 	 * @var string[]
 	 */
 	private array $pending = array();
 
 	/**
+	 * Why the last attempt produced no file, '' when it did.
+	 *
+	 * @var string
+	 */
+	private string $failure = '';
+
+	/**
+	 * Source of the PDF: order, status slug and status config in, binary PDF and file name out. Replaceable in tests.
+	 *
+	 * @var callable|null
+	 */
+	private $source;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Repository|null $repository Status storage.
+	 * @param callable|null   $source     Optional replacement for the renderer: fn( WC_Order, string, array ): array{0: string, 1: string}.
 	 */
-	public function __construct( ?Repository $repository = null ) {
+	public function __construct( ?Repository $repository = null, ?callable $source = null ) {
 		$this->repository = $repository ?? new Repository();
 		$this->generator  = new Generator( $this->repository );
+		$this->source     = $source;
 	}
 
 	/**
@@ -63,6 +89,19 @@ final class Attachments {
 	 */
 	public function register(): void {
 		add_filter( 'ofwc_email_attachments', array( $this, 'filter' ), 10, 3 );
+		add_action( 'wp_mail_succeeded', array( $this, 'on_mail_succeeded' ) );
+		add_action( 'wp_mail_failed', array( $this, 'on_mail_failed' ) );
+		add_action( self::CRON_HOOK, array( $this, 'purge_old' ) );
+		add_action( 'init', array( $this, 'schedule_cleanup' ) );
+	}
+
+	/**
+	 * Make sure the daily cleanup event exists.
+	 */
+	public function schedule_cleanup(): void {
+		if ( false === wp_next_scheduled( self::CRON_HOOK ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', self::CRON_HOOK );
+		}
 	}
 
 	/**
@@ -84,8 +123,70 @@ final class Attachments {
 		$file = $this->write( $order, $status, $config );
 		if ( '' !== $file ) {
 			$paths[] = $file;
+		} elseif ( '' !== $this->failure ) {
+			$order->add_order_note(
+				sprintf(
+					/* translators: %s: reason the PDF was not attached. */
+					__( 'Order Flow: the status email was sent without the PDF document. %s', 'order-flow-for-woocommerce' ),
+					$this->failure
+				)
+			);
 		}
 		return $paths;
+	}
+
+	/**
+	 * Mail was sent: delete the PDFs it carried.
+	 *
+	 * @param mixed $mail_data Data passed to wp_mail_succeeded.
+	 */
+	public function on_mail_succeeded( $mail_data = null ): void {
+		$this->delete_attachments_of( $mail_data );
+	}
+
+	/**
+	 * Mail failed: delete the PDFs it carried.
+	 *
+	 * @param mixed $error WP_Error with the mail data in its error data.
+	 */
+	public function on_mail_failed( $error = null ): void {
+		$data = $error instanceof \WP_Error ? $error->get_error_data() : null;
+		$this->delete_attachments_of( $data );
+	}
+
+	/**
+	 * Delete every file of ours listed in the attachments of a mail.
+	 *
+	 * @param mixed $mail_data Mail data array.
+	 */
+	private function delete_attachments_of( $mail_data ): void {
+		if ( ! is_array( $mail_data ) || ! isset( $mail_data['attachments'] ) ) {
+			return;
+		}
+		$list = $mail_data['attachments'];
+		foreach ( is_array( $list ) ? $list : array( $list ) as $path ) {
+			if ( is_string( $path ) && $this->is_ours( $path ) ) {
+				$this->delete_file( $path );
+			}
+		}
+	}
+
+	/**
+	 * Delete PDFs older than a day, in both possible folders.
+	 */
+	public function purge_old(): void {
+		foreach ( $this->candidate_roots() as $root ) {
+			$files = glob( $root . '/*/*.pdf' );
+			if ( false === $files ) {
+				continue;
+			}
+			foreach ( $files as $file ) {
+				$time = filemtime( $file );
+				if ( false !== $time && $time < time() - self::MAX_AGE ) {
+					$this->delete_file( $file );
+				}
+			}
+		}
 	}
 
 	/**
@@ -98,85 +199,113 @@ final class Attachments {
 	 * @return string File path or ''.
 	 */
 	private function write( WC_Order $order, string $slug, array $config ): string {
-		$dir = $this->directory();
+		$this->failure = '';
+		$dir           = $this->directory();
 		if ( '' === $dir ) {
+			$this->failure = __( 'No writable temporary folder is available.', 'order-flow-for-woocommerce' );
 			return '';
 		}
-		$pdf = $this->generator->render_pdf( $order, $slug );
+		list( $pdf, $name ) = $this->render( $order, $slug, $config );
 		if ( '' === $pdf ) {
+			$this->failure = __( 'The PDF could not be created.', 'order-flow-for-woocommerce' );
 			return '';
 		}
 		// A random subdirectory keeps the path unguessable while the customer sees a clean file name.
 		$sub = $dir . '/' . wp_generate_password( 16, false );
 		if ( ! wp_mkdir_p( $sub ) ) {
+			$this->failure = __( 'No writable temporary folder is available.', 'order-flow-for-woocommerce' );
 			return '';
 		}
-		$path = $sub . '/' . $this->generator->filename( $order, $config );
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Temporary file in uploads.
+		$path = $sub . '/' . $name;
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Temporary file.
 		if ( false === file_put_contents( $path, $pdf ) ) {
+			$this->remove_dir( $sub );
+			$this->failure = __( 'The temporary file could not be written.', 'order-flow-for-woocommerce' );
 			return '';
-		}
-		if ( array() === $this->pending ) {
-			add_action( 'shutdown', array( $this, 'cleanup' ) );
 		}
 		$this->pending[] = $path;
 		return $path;
 	}
 
 	/**
-	 * Delete the files created in this request.
+	 * Render the document: binary PDF and file name, both empty on failure.
+	 *
+	 * @param WC_Order             $order  Order.
+	 * @param string               $slug   Status slug.
+	 * @param array<string, mixed> $config Status config.
+	 * @phpstan-param Status $config
+	 * @return array{0: string, 1: string}
 	 */
-	public function cleanup(): void {
-		foreach ( $this->pending as $path ) {
-			wp_delete_file( $path );
-			$this->remove_dir( dirname( $path ) );
+	private function render( WC_Order $order, string $slug, array $config ): array {
+		if ( null !== $this->source ) {
+			$made = call_user_func( $this->source, $order, $slug, $config );
+			return is_array( $made ) && isset( $made[0], $made[1] ) ? array( Value::string( $made[0] ), Value::string( $made[1] ) ) : array( '', '' );
 		}
-		$this->pending = array();
+		$pdf = $this->generator->render_pdf( $order, $slug );
+		return array( $pdf, '' === $pdf ? '' : $this->generator->filename( $order, $config ) );
 	}
 
 	/**
-	 * Temp directory, created with an index file and a deny rule. Old leftovers are purged.
+	 * Folders that may hold our files, in order of preference.
 	 *
-	 * @return string Path without trailing slash, '' on failure.
+	 * @return string[] Paths without trailing slash.
+	 */
+	private function candidate_roots(): array {
+		$roots = array();
+		$tmp   = get_temp_dir();
+		if ( '' !== $tmp ) {
+			$roots[] = untrailingslashit( $tmp ) . '/' . self::DIR;
+		}
+		$uploads = wp_upload_dir();
+		if ( '' !== $uploads['basedir'] ) {
+			$roots[] = untrailingslashit( $uploads['basedir'] ) . '/' . self::DIR;
+		}
+		return $roots;
+	}
+
+	/**
+	 * First usable folder: the system temporary directory, else uploads. Both get an index file and a deny rule.
+	 *
+	 * @return string Path without trailing slash, '' when none can be written.
 	 */
 	private function directory(): string {
-		$uploads = wp_upload_dir();
-		if ( '' === $uploads['basedir'] ) {
-			return '';
+		foreach ( $this->candidate_roots() as $dir ) {
+			if ( ! wp_mkdir_p( $dir ) || ! wp_is_writable( $dir ) ) {
+				continue;
+			}
+			// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Protecting a directory.
+			if ( ! file_exists( $dir . '/index.php' ) ) {
+				file_put_contents( $dir . '/index.php', self::INDEX_FILE );
+			}
+			if ( ! file_exists( $dir . '/.htaccess' ) ) {
+				file_put_contents( $dir . '/.htaccess', self::HTACCESS );
+			}
+			// phpcs:enable
+			return $dir;
 		}
-		$dir = untrailingslashit( $uploads['basedir'] ) . '/' . self::DIR;
-		if ( ! wp_mkdir_p( $dir ) ) {
-			return '';
-		}
-		// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Protecting a directory in uploads.
-		if ( ! file_exists( $dir . '/index.php' ) ) {
-			file_put_contents( $dir . '/index.php', "<?php\n// Silence is golden.\n" );
-		}
-		if ( ! file_exists( $dir . '/.htaccess' ) ) {
-			file_put_contents( $dir . '/.htaccess', "Deny from all\n" );
-		}
-		// phpcs:enable
-		$this->purge( $dir );
-		return $dir;
+		return '';
 	}
 
 	/**
-	 * Remove PDFs older than a day (left by a request that died before shutdown).
+	 * Whether a path is a file this class created: "<anything>/ofwc-tmp/<random>/<name>.pdf".
 	 *
-	 * @param string $dir Directory.
+	 * @param string $path File path.
 	 */
-	private function purge( string $dir ): void {
-		$files = glob( $dir . '/*/*.pdf' );
-		if ( false === $files ) {
-			return;
-		}
-		foreach ( $files as $file ) {
-			$time = filemtime( $file );
-			if ( false !== $time && $time < time() - self::MAX_AGE ) {
-				wp_delete_file( $file );
-				$this->remove_dir( dirname( $file ) );
-			}
-		}
+	private function is_ours( string $path ): bool {
+		return 'pdf' === strtolower( pathinfo( $path, PATHINFO_EXTENSION ) )
+			&& self::DIR === basename( dirname( $path, 2 ) )
+			&& false === strpos( $path, '..' );
+	}
+
+	/**
+	 * Delete one file and its per-file subfolder.
+	 *
+	 * @param string $path File path.
+	 */
+	private function delete_file( string $path ): void {
+		wp_delete_file( $path );
+		$this->remove_dir( dirname( $path ) );
+		$this->pending = array_values( array_diff( $this->pending, array( $path ) ) );
 	}
 
 	/**
@@ -185,13 +314,12 @@ final class Attachments {
 	 * @param string $sub Subdirectory path.
 	 */
 	private function remove_dir( string $sub ): void {
-		$base = basename( dirname( $sub ) );
-		if ( self::DIR !== $base || ! is_dir( $sub ) ) {
+		if ( self::DIR !== basename( dirname( $sub ) ) || ! is_dir( $sub ) ) {
 			return;
 		}
 		$left = glob( $sub . '/*' );
 		if ( is_array( $left ) && array() === $left ) {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- Empty temp directory in uploads.
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- Empty temp directory.
 			rmdir( $sub );
 		}
 	}

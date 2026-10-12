@@ -39,7 +39,11 @@ final class RepositoryTest extends TestCase {
 	 * @param array<string, mixed> $stored Stored statuses.
 	 */
 	private function stored( array $stored ): void {
-		Functions\when( 'get_option' )->justReturn( $stored );
+		Functions\when( 'get_option' )->alias(
+			static function ( string $name, $fallback = false ) use ( $stored ) {
+				return 'ofwc_statuses' === $name ? $stored : $fallback;
+			}
+		);
 	}
 
 	/**
@@ -304,8 +308,11 @@ final class RepositoryTest extends TestCase {
 			),
 		);
 		Functions\when( 'get_option' )->alias(
-			function ( string $name ) use ( $rules ) {
-				return 'ofwc_transitions' === $name ? $rules : array( 'awaiting-proof' => $this->valid() );
+			function ( string $name, $fallback = false ) use ( $rules ) {
+				if ( 'ofwc_transitions' === $name ) {
+					return $rules;
+				}
+				return 'ofwc_statuses' === $name ? array( 'awaiting-proof' => $this->valid() ) : $fallback;
 			}
 		);
 		Functions\when( 'wc_get_orders' )->justReturn( (object) array( 'total' => 0 ) );

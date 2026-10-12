@@ -78,17 +78,27 @@ final class Plugin {
 		( new Pdf\Module() )->register();
 		( new Admin\ImportExport() )->register();
 		( new Admin\Deactivation() )->register();
+		( new Migration\Module() )->register();
 	}
 
 	/**
-	 * Whether WooCommerce is loaded or active.
+	 * Whether WooCommerce is loaded. Called on plugins_loaded, when every active plugin, network-wide ones
+	 * included, has been included, so the class check is reliable on single sites and on a network.
 	 */
 	private function woocommerce_active(): bool {
-		if ( class_exists( 'WooCommerce' ) ) {
+		return class_exists( 'WooCommerce' );
+	}
+
+	/**
+	 * Whether WooCommerce is switched on (site or network) even though it did not load, for example paused by
+	 * the recovery mode after a fatal error.
+	 */
+	private function woocommerce_switched_on(): bool {
+		$plugin = 'woocommerce/woocommerce.php';
+		if ( in_array( $plugin, (array) get_option( 'active_plugins', array() ), true ) ) {
 			return true;
 		}
-		$active = (array) get_option( 'active_plugins', array() );
-		return in_array( 'woocommerce/woocommerce.php', $active, true );
+		return function_exists( 'is_multisite' ) && is_multisite() && isset( ( (array) get_site_option( 'active_sitewide_plugins', array() ) )[ $plugin ] );
 	}
 
 	/**
@@ -98,9 +108,9 @@ final class Plugin {
 		if ( ! current_user_can( 'activate_plugins' ) ) {
 			return;
 		}
-		printf(
-			'<div class="notice notice-error"><p>%s</p></div>',
-			esc_html__( 'Order Flow for WooCommerce needs WooCommerce to be installed and active.', 'order-flow-for-woocommerce' )
-		);
+		$message = $this->woocommerce_switched_on()
+			? __( 'Order Flow for WooCommerce is paused because WooCommerce is active but did not load. It continues as soon as WooCommerce loads again.', 'order-flow-for-woocommerce' )
+			: __( 'Order Flow for WooCommerce needs WooCommerce to be installed and active.', 'order-flow-for-woocommerce' );
+		printf( '<div class="notice notice-error"><p>%s</p></div>', esc_html( $message ) );
 	}
 }

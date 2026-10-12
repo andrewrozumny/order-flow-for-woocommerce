@@ -18,6 +18,9 @@
 			<directory name="vendor"/>
 		</ignoreFiles>
 	</projectFiles>
+	<extraFiles>
+		<directory name="vendor-prefixed"/>
+	</extraFiles>
 	<stubs>
 		<file name="vendor/php-stubs/wordpress-stubs/wordpress-stubs.php" preloadClasses="true"/>
 		<file name="vendor/php-stubs/wordpress-globals/wordpress-globals.php"/>

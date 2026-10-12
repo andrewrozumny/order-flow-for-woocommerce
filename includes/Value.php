@@ -39,6 +39,16 @@ final class Value {
 	}
 
 	/**
+	 * Non-negative number to float, anything else to the fallback.
+	 *
+	 * @param mixed $value    Value.
+	 * @param float $fallback Result for non-numeric or negative values.
+	 */
+	public static function float( $value, float $fallback = 0.0 ): float {
+		return is_numeric( $value ) && (float) $value >= 0 ? (float) $value : $fallback;
+	}
+
+	/**
 	 * Order ID from an item wc_get_orders() returned: an order object or, with return=ids, an ID.
 	 *
 	 * @param mixed $item Result item.

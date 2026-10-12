@@ -43,9 +43,17 @@ add_action(
 
 register_activation_hook(
 	__FILE__,
-	static function (): void {
-		( new \OrderFlowWC\Migration\Orders() )->restore_or_defer();
+	static function ( $network_wide = false ): void {
+		\OrderFlowWC\Migration\Lifecycle::activate( $network_wide );
 	}
 );
 
-\OrderFlowWC\Plugin::instance()->boot();
+register_deactivation_hook(
+	__FILE__,
+	static function ( $network_wide = false ): void {
+		\OrderFlowWC\Migration\Lifecycle::deactivate( $network_wide );
+	}
+);
+
+// WooCommerce, network-activated plugins included, is loaded by plugins_loaded; boot only then.
+add_action( 'plugins_loaded', array( \OrderFlowWC\Plugin::instance(), 'boot' ) );

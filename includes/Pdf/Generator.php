@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace OrderFlowWC\Pdf;
 
 use OrderFlowWC\Placeholders;
+use OrderFlowWC\Vendor\Dompdf\Dompdf;
+use OrderFlowWC\Vendor\Dompdf\Options;
 use OrderFlowWC\Statuses\Repository;
 use OrderFlowWC\Value;
 use WC_Order;
@@ -30,6 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Generator {
 
 	public const MAX_LOGO_BYTES = 2097152;
+	public const FONT_CACHE_DIR = 'ofwc-fonts';
 
 	/**
 	 * Status storage.
@@ -150,7 +153,7 @@ final class Generator {
 	 * @return string Binary PDF, empty when dompdf is not available.
 	 */
 	public function pdf_from_html( string $html ): string {
-		if ( ! $this->load_dompdf() ) {
+		if ( ! Libraries::load() ) {
 			return '';
 		}
 
@@ -161,7 +164,7 @@ final class Generator {
 			$chroot[] = $base;
 		}
 
-		$options = new \Dompdf\Options();
+		$options = new Options();
 		$options->set( 'isRemoteEnabled', false );
 		$options->set( 'isPhpEnabled', false );
 		$options->set( 'chroot', $chroot );
@@ -171,7 +174,7 @@ final class Generator {
 			$options->set( 'fontCache', $cache );
 		}
 
-		$dompdf = new \Dompdf\Dompdf( $options );
+		$dompdf = new Dompdf( $options );
 		$dompdf->setPaper( 'A4', 'portrait' );
 		$dompdf->loadHtml( $html, 'UTF-8' );
 		$dompdf->render();
@@ -179,33 +182,16 @@ final class Generator {
 	}
 
 	/**
-	 * Load dompdf lazily so the plugin does not clash with other plugins bundling it.
-	 */
-	private function load_dompdf(): bool {
-		if ( class_exists( '\Dompdf\Dompdf' ) ) {
-			return true;
-		}
-		$autoload = OFWC_PATH . 'vendor/autoload.php';
-		if ( is_readable( $autoload ) ) {
-			require_once $autoload;
-		}
-		return class_exists( '\Dompdf\Dompdf' );
-	}
-
-	/**
-	 * Writable font cache directory, or '' to keep the dompdf default (inside vendor).
+	 * Font cache directory: always inside uploads, never inside the plugin folder.
 	 *
 	 * @param string $uploads_base Uploads base directory.
+	 * @return string Path, or '' when uploads is not usable (dompdf then keeps its default).
 	 */
 	private function font_cache_dir( string $uploads_base ): string {
-		$default = OFWC_PATH . 'vendor/dompdf/dompdf/lib/fonts';
-		if ( is_dir( $default ) && is_writable( $default ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- Probing a directory, not writing through the filesystem API.
-			return '';
-		}
 		if ( '' === $uploads_base ) {
 			return '';
 		}
-		$dir = trailingslashit( $uploads_base ) . 'ofwc-fonts';
+		$dir = trailingslashit( $uploads_base ) . self::FONT_CACHE_DIR;
 		if ( ! wp_mkdir_p( $dir ) ) {
 			return '';
 		}
