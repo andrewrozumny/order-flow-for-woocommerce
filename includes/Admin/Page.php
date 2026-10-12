@@ -174,7 +174,8 @@ final class Page {
 	 */
 	private static function swatch_css(): string {
 		$css = '';
-		foreach ( ( new Repository() )->all() as $slug => $status ) {
+		foreach ( ( new Repository() )->all() as $status ) {
+			$slug = $status['slug'];
 			if ( 1 === preg_match( '/^#[0-9a-f]{3,8}$/i', $status['color'] ) ) {
 				$css .= sprintf( '.ofwc-wrap .%1$s{background:%2$s;}', self::swatch_class( $slug ), $status['color'] );
 			}

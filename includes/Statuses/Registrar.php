@@ -68,7 +68,8 @@ final class Registrar {
 	 * Register the post statuses.
 	 */
 	public function register_post_statuses(): void {
-		foreach ( $this->repository->all() as $slug => $status ) {
+		foreach ( $this->repository->all() as $status ) {
+			$slug  = $status['slug'];
 			$label = $status['label'];
 			// Same shape as _n_noop(); the label is user-defined data, not a translatable string.
 			$count = str_replace( '%', '%%', $label ) . ' <span class="count">(%s)</span>';
@@ -111,7 +112,8 @@ final class Registrar {
 
 		$mask  = $this->mask_labels();
 		$added = array();
-		foreach ( $custom as $slug => $status ) {
+		foreach ( $custom as $status ) {
+			$slug                             = $status['slug'];
 			$hide                             = $mask && Masking::is_hidden( $status );
 			$fallback                         = $statuses[ Slug::prefixed( Masking::STAND_IN ) ] ?? $status['label'];
 			$added[ Slug::prefixed( $slug ) ] = $hide && is_string( $fallback ) ? $fallback : $status['label'];

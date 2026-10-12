@@ -60,7 +60,8 @@ final class Colors {
 	 */
 	public function css(): string {
 		$css = '';
-		foreach ( $this->repository->all() as $slug => $status ) {
+		foreach ( $this->repository->all() as $status ) {
+			$slug  = $status['slug'];
 			$color = $status['color'];
 			$css  .= sprintf(
 				'.order-status.status-%1$s{background:%2$s;color:%3$s;}',
