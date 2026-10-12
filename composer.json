@@ -1,0 +1,51 @@
+{
+	"name": "andrewrozumny/order-flow-for-woocommerce",
+	"description": "Custom WooCommerce order statuses with transitions, history, emails and PDF documents.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"authors": [
+		{
+			"name": "Andrew Rozumny",
+			"homepage": "https://helpmybiz.org"
+		}
+	],
+	"require": {
+		"php": ">=8.1",
+		"dompdf/dompdf": "^3.1"
+	},
+	"require-dev": {
+		"wp-coding-standards/wpcs": "^3.0",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+		"phpcompatibility/phpcompatibility-wp": "^2.1",
+		"phpstan/phpstan": "^2.0",
+		"szepeviktor/phpstan-wordpress": "^2.0",
+		"php-stubs/woocommerce-stubs": "*",
+		"php-stubs/wp-cli-stubs": "*",
+		"phpunit/phpunit": "^9.6",
+		"yoast/wp-test-utils": "^1.2",
+		"smalot/pdfparser": "^2.0"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true,
+			"phpstan/extension-installer": true
+		},
+		"platform": {
+			"php": "8.1.0"
+		},
+		"sort-packages": true,
+		"optimize-autoloader": true
+	},
+	"scripts": {
+		"lint": "phpcs",
+		"lint:fix": "phpcbf",
+		"analyse": "phpstan analyse --memory-limit=1G --no-progress",
+		"test": "phpunit --testsuite unit",
+		"test:integration": "bash bin/integration-test.sh"
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"OrderFlowWC\\Tests\\": "tests/"
+		}
+	}
+}

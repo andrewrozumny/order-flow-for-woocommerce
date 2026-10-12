@@ -1,0 +1,16 @@
+.ofwc-wrap .ofwc-tab-content { margin-top: 16px; }
+.ofwc-wrap .ofwc-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 8px; vertical-align: middle; border: 1px solid rgba(0, 0, 0, 0.15); }
+.ofwc-wrap .ofwc-icon { margin-right: 6px; color: #50575e; vertical-align: middle; }
+.ofwc-wrap .ofwc-table .column-orders { width: 90px; text-align: right; }
+.ofwc-wrap .ofwc-flag { display: inline-block; margin: 0 4px 4px 0; padding: 1px 8px; border-radius: 10px; background: #f0f0f1; color: #3c434a; font-size: 12px; line-height: 20px; }
+.ofwc-wrap .ofwc-empty { padding: 24px; background: #fff; border: 1px solid #c3c4c7; border-left: 4px solid #2271b1; }
+.ofwc-wrap .ofwc-form h3 { margin-top: 24px; }
+.ofwc-wrap .ofwc-form textarea.large-text { max-width: 640px; }
+.ofwc-wrap .ofwc-check { display: block; margin-bottom: 2px; }
+.ofwc-wrap .ofwc-check-help { margin: 0 0 10px 24px; }
+.ofwc-wrap .ofwc-icons { display: flex; flex-wrap: wrap; gap: 4px; max-width: 520px; }
+.ofwc-wrap .ofwc-icons label { position: relative; }
+.ofwc-wrap .ofwc-icons input { position: absolute; opacity: 0; pointer-events: none; }
+.ofwc-wrap .ofwc-icons .dashicons { box-sizing: content-box; width: 20px; height: 20px; padding: 6px; border: 1px solid #c3c4c7; border-radius: 4px; background: #fff; cursor: pointer; }
+.ofwc-wrap .ofwc-icons input:checked + .dashicons { border-color: #2271b1; box-shadow: 0 0 0 1px #2271b1; color: #2271b1; }
+.ofwc-wrap .ofwc-icons input:focus-visible + .dashicons { outline: 2px solid #2271b1; outline-offset: 2px; }

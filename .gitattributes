@@ -1,0 +1,26 @@
+* text=auto eol=lf
+
+/.git export-ignore
+/.github export-ignore
+/.gitignore export-ignore
+/.gitattributes export-ignore
+/.editorconfig export-ignore
+/.distignore export-ignore
+/.phpunit.result.cache export-ignore
+/.DS_Store export-ignore
+/assets-src export-ignore
+/.wordpress-org export-ignore
+/bin export-ignore
+/docs export-ignore
+/node_modules export-ignore
+/tests export-ignore
+/dist export-ignore
+/incoming export-ignore
+/composer.json export-ignore
+/composer.lock export-ignore
+/phpcs.xml.dist export-ignore
+/phpstan.neon.dist export-ignore
+/phpunit.xml.dist export-ignore
+/README.md export-ignore
+/CHANGELOG.md export-ignore
+*.zip

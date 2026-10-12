@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<ruleset name="Order Flow for WooCommerce">
+	<description>Coding standards for Order Flow for WooCommerce.</description>
+
+	<file>order-flow-for-woocommerce.php</file>
+	<file>uninstall.php</file>
+	<file>includes</file>
+	<file>tests</file>
+
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+	<arg name="parallel" value="8"/>
+
+	<config name="testVersion" value="8.1-"/>
+	<config name="minimum_wp_version" value="6.6"/>
+
+	<rule ref="WordPress">
+		<!-- PSR-4 class files are named after the class on purpose. -->
+		<exclude name="WordPress.Files.FileName"/>
+	</rule>
+	<rule ref="PHPCompatibilityWP"/>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="order-flow-for-woocommerce"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="manage_woocommerce"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="ofwc"/>
+				<element value="OrderFlowWC"/>
+				<element value="OFWC"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Tests: relaxed rules for test code only. -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Squiz.Commenting.FunctionComment.MissingParamTag">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+</ruleset>
