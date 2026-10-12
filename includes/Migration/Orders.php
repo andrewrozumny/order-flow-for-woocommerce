@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OrderFlowWC\Migration;
 
 use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Value;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -50,7 +51,7 @@ final class Orders {
 	 */
 	public function counts(): array {
 		$counts = array();
-		foreach ( array_keys( $this->repository->all() ) as $slug ) {
+		foreach ( array_column( $this->repository->all(), 'slug' ) as $slug ) {
 			$count = $this->repository->count_orders( $slug );
 			if ( $count > 0 ) {
 				$counts[ $slug ] = $count;
@@ -68,7 +69,7 @@ final class Orders {
 		$moved = 0;
 		$this->quiet(
 			function () use ( &$moved ): void {
-				foreach ( array_keys( $this->repository->all() ) as $slug ) {
+				foreach ( array_column( $this->repository->all(), 'slug' ) as $slug ) {
 					$failed = array();
 					do {
 						$ids = $this->ids(
@@ -114,7 +115,7 @@ final class Orders {
 	 */
 	public function restore(): int {
 		$restored = 0;
-		$known    = array_keys( $this->repository->all() );
+		$known    = array_column( $this->repository->all(), 'slug' );
 		$this->quiet(
 			function () use ( &$restored, $known ): void {
 				$skipped = array();
@@ -208,10 +209,9 @@ final class Orders {
 		);
 		$ids   = array();
 		foreach ( is_array( $found ) ? $found : array() as $item ) {
-			if ( is_numeric( $item ) ) {
-				$ids[] = (int) $item;
-			} elseif ( $item instanceof \WC_Order ) {
-				$ids[] = $item->get_id();
+			$id = Value::order_id( $item );
+			if ( null !== $id ) {
+				$ids[] = $id;
 			}
 		}
 		return $ids;
@@ -223,6 +223,11 @@ final class Orders {
 	 * @param callable $callback Work to do.
 	 */
 	private function quiet( callable $callback ): void {
+		/**
+		 * WordPress hook registry, a global the stubs do not type.
+		 *
+		 * @var array<string, \WP_Hook> $wp_filter
+		 */
 		global $wp_filter;
 		$saved = isset( $wp_filter['ofwc_status_entered'] ) ? $wp_filter['ofwc_status_entered'] : null;
 		unset( $wp_filter['ofwc_status_entered'] );

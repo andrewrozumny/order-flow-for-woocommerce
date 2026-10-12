@@ -11,6 +11,7 @@ namespace OrderFlowWC\Pdf;
 
 use OrderFlowWC\Placeholders;
 use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Value;
 use WC_Order;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -23,6 +24,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Themes override the template at `yourtheme/order-flow-for-woocommerce/pdf/document.php`. The template
  * receives one array, `$ofwc_doc`, with the keys: order, status, title, status_label, order_number,
  * date, logo_src, store_details, text, billing, shipping, items, totals, site_url.
+ *
+ * @phpstan-import-type Status from Repository
  */
 final class Generator {
 
@@ -49,10 +52,11 @@ final class Generator {
 	 *
 	 * @param WC_Order             $order  Order.
 	 * @param array<string, mixed> $status Status config.
+	 * @phpstan-param Status $status
 	 */
 	public function title( WC_Order $order, array $status ): string {
-		$label = (string) $status['label'];
-		$title = trim( Placeholders::replace( (string) $status['pdf_title'], $order, $label ) );
+		$label = $status['label'];
+		$title = trim( Placeholders::replace( $status['pdf_title'], $order, $label ) );
 		return '' === $title ? $label : $title;
 	}
 
@@ -61,11 +65,12 @@ final class Generator {
 	 *
 	 * @param WC_Order             $order  Order.
 	 * @param array<string, mixed> $status Status config.
+	 * @phpstan-param Status $status
 	 */
 	public function filename( WC_Order $order, array $status ): string {
 		$slug = sanitize_title( $this->title( $order, $status ) );
 		if ( '' === $slug ) {
-			$slug = (string) $status['slug'];
+			$slug = $status['slug'];
 		}
 		return sanitize_file_name( $slug . '-' . $order->get_order_number() . '.pdf' );
 	}
@@ -81,7 +86,7 @@ final class Generator {
 		if ( null === $status ) {
 			return '';
 		}
-		$label = (string) $status['label'];
+		$label = $status['label'];
 		$date  = $order->get_date_created();
 
 		/**
@@ -98,13 +103,13 @@ final class Generator {
 				'status'        => $status,
 				'title'         => $this->title( $order, $status ),
 				'status_label'  => $label,
-				'order_number'  => (string) $order->get_order_number(),
-				'date'          => null === $date ? '' : (string) wc_format_datetime( $date ),
+				'order_number'  => $order->get_order_number(),
+				'date'          => null === $date ? '' : wc_format_datetime( $date ),
 				'logo_src'      => $this->logo_data_uri(),
 				'store_details' => $this->store_details_html(),
-				'text'          => wpautop( wp_kses_post( Placeholders::replace( (string) $status['pdf_text'], $order, $label, '', true ) ) ),
-				'billing'       => (string) $order->get_formatted_billing_address( '' ),
-				'shipping'      => (string) $order->get_formatted_shipping_address( '' ),
+				'text'          => wpautop( wp_kses_post( Placeholders::replace( $status['pdf_text'], $order, $label, '', true ) ) ),
+				'billing'       => $order->get_formatted_billing_address( '' ),
+				'shipping'      => $order->get_formatted_shipping_address( '' ),
 				'items'         => $this->item_rows( $order ),
 				'totals'        => $order->get_order_item_totals(),
 				'site_url'      => home_url(),
@@ -150,7 +155,7 @@ final class Generator {
 		}
 
 		$uploads = wp_upload_dir();
-		$base    = isset( $uploads['basedir'] ) && is_string( $uploads['basedir'] ) ? $uploads['basedir'] : '';
+		$base    = $uploads['basedir'];
 		$chroot  = array( ABSPATH, OFWC_PATH );
 		if ( '' !== $base ) {
 			$chroot[] = $base;
@@ -170,7 +175,7 @@ final class Generator {
 		$dompdf->setPaper( 'A4', 'portrait' );
 		$dompdf->loadHtml( $html, 'UTF-8' );
 		$dompdf->render();
-		return (string) $dompdf->output();
+		return $dompdf->output();
 	}
 
 	/**
@@ -236,7 +241,7 @@ final class Generator {
 	 */
 	private function logo_path(): string {
 		$settings = get_option( 'ofwc_settings', array() );
-		$logo_id  = is_array( $settings ) && isset( $settings['logo_id'] ) ? (int) $settings['logo_id'] : 0;
+		$logo_id  = is_array( $settings ) ? Value::int( $settings['logo_id'] ?? 0 ) : 0;
 		if ( $logo_id > 0 ) {
 			$file = get_attached_file( $logo_id );
 			if ( is_string( $file ) && '' !== $file ) {
@@ -244,13 +249,13 @@ final class Generator {
 			}
 		}
 
-		$url = (string) get_option( 'woocommerce_email_header_image', '' );
+		$url = Value::option_string( 'woocommerce_email_header_image' );
 		if ( '' === $url ) {
 			return '';
 		}
 		$uploads = wp_upload_dir();
-		$baseurl = isset( $uploads['baseurl'] ) && is_string( $uploads['baseurl'] ) ? $uploads['baseurl'] : '';
-		$basedir = isset( $uploads['basedir'] ) && is_string( $uploads['basedir'] ) ? $uploads['basedir'] : '';
+		$baseurl = $uploads['baseurl'];
+		$basedir = $uploads['basedir'];
 		if ( '' === $baseurl || '' === $basedir || 0 !== strpos( $url, $baseurl . '/' ) ) {
 			return '';
 		}
@@ -266,24 +271,24 @@ final class Generator {
 	 */
 	public function store_details_html(): string {
 		$settings = get_option( 'ofwc_settings', array() );
-		$custom   = is_array( $settings ) && isset( $settings['store_details'] ) ? trim( (string) $settings['store_details'] ) : '';
+		$custom   = is_array( $settings ) ? trim( Value::string( $settings['store_details'] ?? '' ) ) : '';
 		if ( '' !== $custom ) {
 			return wpautop( wp_kses_post( $custom ) );
 		}
 
 		$lines   = array();
-		$lines[] = '<strong>' . esc_html( wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES ) ) . '</strong>';
+		$lines[] = '<strong>' . esc_html( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) ) . '</strong>';
 		foreach ( array( 'woocommerce_store_address', 'woocommerce_store_address_2' ) as $key ) {
-			$value = trim( (string) get_option( $key, '' ) );
+			$value = trim( Value::option_string( $key ) );
 			if ( '' !== $value ) {
 				$lines[] = esc_html( $value );
 			}
 		}
-		$city = trim( trim( (string) get_option( 'woocommerce_store_postcode', '' ) ) . ' ' . trim( (string) get_option( 'woocommerce_store_city', '' ) ) );
+		$city = trim( trim( Value::option_string( 'woocommerce_store_postcode' ) ) . ' ' . trim( Value::option_string( 'woocommerce_store_city' ) ) );
 		if ( '' !== $city ) {
 			$lines[] = esc_html( $city );
 		}
-		$country = $this->country_name( (string) get_option( 'woocommerce_default_country', '' ) );
+		$country = $this->country_name( Value::option_string( 'woocommerce_default_country' ) );
 		if ( '' !== $country ) {
 			$lines[] = esc_html( $country );
 		}
@@ -301,7 +306,7 @@ final class Generator {
 			return '';
 		}
 		$countries = WC()->countries->get_countries();
-		return isset( $countries[ $code ] ) ? html_entity_decode( (string) $countries[ $code ], ENT_QUOTES, 'UTF-8' ) : '';
+		return isset( $countries[ $code ] ) ? html_entity_decode( Value::string( $countries[ $code ] ), ENT_QUOTES, 'UTF-8' ) : '';
 	}
 
 	/**
@@ -319,10 +324,10 @@ final class Generator {
 			$product = $item->get_product();
 			$rows[]  = array(
 				'name'  => $item->get_name(),
-				'sku'   => $product instanceof \WC_Product ? (string) $product->get_sku() : '',
-				'qty'   => (int) $item->get_quantity(),
-				'price' => (string) wc_price( (float) $order->get_item_subtotal( $item, false, true ), array( 'currency' => $order->get_currency() ) ),
-				'total' => (string) $order->get_formatted_line_subtotal( $item ),
+				'sku'   => $product instanceof \WC_Product ? $product->get_sku() : '',
+				'qty'   => $item->get_quantity(),
+				'price' => wc_price( $order->get_item_subtotal( $item, false, true ), array( 'currency' => $order->get_currency() ) ),
+				'total' => $order->get_formatted_line_subtotal( $item ),
 			);
 		}
 		return $rows;

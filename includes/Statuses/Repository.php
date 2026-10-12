@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Statuses;
 
+use OrderFlowWC\Value;
 use WP_Error;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,6 +21,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Every status is an array keyed by its slug (without the `wc-` prefix). See defaults()
  * for the full field list.
+ *
+ * @phpstan-type Status array{slug: string, label: string, color: string, icon: string, paid: bool, show_in_account: bool, reduce_stock: bool, email_customer: bool, email_admin: bool, email_subject: string, email_heading: string, email_body: string, pdf_enabled: bool, pdf_title: string, pdf_text: string, pdf_attach: bool, position: int}
  */
 final class Repository {
 
@@ -48,7 +51,7 @@ final class Repository {
 	/**
 	 * Per-request cache of all().
 	 *
-	 * @var array<string, array<string, mixed>>|null
+	 * @var array<string, Status>|null
 	 */
 	private static ?array $cache = null;
 
@@ -111,7 +114,7 @@ final class Repository {
 	/**
 	 * A status with every field at its default value.
 	 *
-	 * @return array<string, mixed>
+	 * @return Status
 	 */
 	public function defaults(): array {
 		return array(
@@ -138,7 +141,7 @@ final class Repository {
 	/**
 	 * Every status, sorted by position then slug.
 	 *
-	 * @return array<string, array<string, mixed>>
+	 * @return array<string, Status>
 	 */
 	public function all(): array {
 		if ( null !== self::$cache ) {
@@ -154,7 +157,7 @@ final class Repository {
 				}
 				$clean = $this->sanitize( $row );
 				if ( '' !== $clean['slug'] ) {
-					$list[ (string) $clean['slug'] ] = $clean;
+					$list[ $clean['slug'] ] = $clean;
 				}
 			}
 		}
@@ -174,7 +177,7 @@ final class Repository {
 	 * One status or null.
 	 *
 	 * @param string $slug Slug without the wc- prefix.
-	 * @return array<string, mixed>|null
+	 * @return Status|null
 	 */
 	public function get( string $slug ): ?array {
 		$all = $this->all();
@@ -196,8 +199,8 @@ final class Repository {
 	/**
 	 * Coerce any input into a complete, well-typed status. Never fails; validate() judges the result.
 	 *
-	 * @param array<string, mixed> $raw Raw status data, any subset of the fields.
-	 * @return array<string, mixed>
+	 * @param array<mixed, mixed> $raw Raw status data, any subset of the fields.
+	 * @return Status
 	 */
 	public function sanitize( array $raw ): array {
 		$d = $this->defaults();
@@ -209,13 +212,15 @@ final class Repository {
 
 		$color = strtolower( trim( $this->to_string( $raw['color'] ?? '' ) ) );
 		if ( 1 !== preg_match( '/^#[0-9a-f]{6}$/', $color ) ) {
-			$color = (string) $d['color'];
+			$color = $d['color'];
 		}
 
 		$icon = $this->to_string( $raw['icon'] ?? '' );
 		if ( ! array_key_exists( $icon, self::icons() ) ) {
-			$icon = (string) $d['icon'];
+			$icon = $d['icon'];
 		}
+
+		$position = $raw['position'] ?? null;
 
 		$out = array(
 			'slug'            => $slug,
@@ -227,14 +232,14 @@ final class Repository {
 			'reduce_stock'    => $this->to_bool( $raw['reduce_stock'] ?? $d['reduce_stock'] ),
 			'email_customer'  => $this->to_bool( $raw['email_customer'] ?? $d['email_customer'] ),
 			'email_admin'     => $this->to_bool( $raw['email_admin'] ?? $d['email_admin'] ),
-			'email_subject'   => $this->text_or_default( $raw, 'email_subject', (string) $d['email_subject'] ),
-			'email_heading'   => $this->text_or_default( $raw, 'email_heading', (string) $d['email_heading'] ),
-			'email_body'      => $this->html_or_default( $raw, 'email_body', (string) $d['email_body'] ),
+			'email_subject'   => $this->text_or_default( $raw, 'email_subject', $d['email_subject'] ),
+			'email_heading'   => $this->text_or_default( $raw, 'email_heading', $d['email_heading'] ),
+			'email_body'      => $this->html_or_default( $raw, 'email_body', $d['email_body'] ),
 			'pdf_enabled'     => $this->to_bool( $raw['pdf_enabled'] ?? $d['pdf_enabled'] ),
-			'pdf_title'       => $this->text_or_default( $raw, 'pdf_title', (string) $d['pdf_title'] ),
-			'pdf_text'        => isset( $raw['pdf_text'] ) ? wp_kses_post( $this->to_string( $raw['pdf_text'] ) ) : (string) $d['pdf_text'],
+			'pdf_title'       => $this->text_or_default( $raw, 'pdf_title', $d['pdf_title'] ),
+			'pdf_text'        => isset( $raw['pdf_text'] ) ? wp_kses_post( $this->to_string( $raw['pdf_text'] ) ) : $d['pdf_text'],
 			'pdf_attach'      => $this->to_bool( $raw['pdf_attach'] ?? $d['pdf_attach'] ),
-			'position'        => (int) ( is_numeric( $raw['position'] ?? null ) ? $raw['position'] : $d['position'] ),
+			'position'        => is_numeric( $position ) ? (int) $position : $d['position'],
 		);
 
 		return $out;
@@ -243,12 +248,13 @@ final class Repository {
 	/**
 	 * Validate a sanitized status.
 	 *
-	 * @param array<string, mixed> $status  Output of sanitize().
+	 * @param array<string, mixed> $status Output of sanitize().
+	 * @phpstan-param Status $status
 	 * @param string|null          $editing Slug being edited, or null when creating a new status.
 	 * @return true|WP_Error
 	 */
 	public function validate( array $status, ?string $editing = null ) {
-		$slug = (string) ( $status['slug'] ?? '' );
+		$slug = $status['slug'];
 
 		if ( '' === $slug ) {
 			return new WP_Error( 'ofwc_slug_required', __( 'Enter a slug for the status.', 'order-flow-for-woocommerce' ) );
@@ -269,7 +275,7 @@ final class Repository {
 		if ( in_array( $slug, self::CORE_SLUGS, true ) ) {
 			return new WP_Error( 'ofwc_slug_core', __( 'This slug is used by a WooCommerce core status. Choose another one.', 'order-flow-for-woocommerce' ) );
 		}
-		if ( '' === (string) ( $status['label'] ?? '' ) ) {
+		if ( '' === $status['label'] ) {
 			return new WP_Error( 'ofwc_label_required', __( 'Enter a label for the status.', 'order-flow-for-woocommerce' ) );
 		}
 
@@ -296,8 +302,8 @@ final class Repository {
 	/**
 	 * Sanitize, validate and store a status.
 	 *
-	 * @param array<string, mixed> $status  Raw status data.
-	 * @param string|null          $editing Slug being edited, or null to create a new status.
+	 * @param array<mixed, mixed> $status  Raw status data.
+	 * @param string|null         $editing Slug being edited, or null to create a new status.
 	 * @return true|WP_Error
 	 */
 	public function save( array $status, ?string $editing = null ) {
@@ -309,11 +315,11 @@ final class Repository {
 
 		$all = $this->all();
 		if ( null === $editing && ! isset( $status['position'] ) ) {
-			$positions         = array_map( 'intval', array_column( $all, 'position' ) );
+			$positions         = array_column( $all, 'position' );
 			$clean['position'] = array() === $positions ? 1 : max( $positions ) + 1;
 		}
 
-		$all[ (string) $clean['slug'] ] = $clean;
+		$all[ $clean['slug'] ] = $clean;
 		$this->store( $all );
 		return true;
 	}
@@ -332,7 +338,7 @@ final class Repository {
 				'return'   => 'ids',
 			)
 		);
-		return is_object( $result ) && isset( $result->total ) ? (int) $result->total : 0;
+		return is_object( $result ) && isset( $result->total ) && is_numeric( $result->total ) ? (int) $result->total : 0;
 	}
 
 	/**
@@ -414,10 +420,9 @@ final class Repository {
 		);
 		$ids   = array();
 		foreach ( is_array( $found ) ? $found : array() as $item ) {
-			if ( $item instanceof \WC_Order ) {
-				$ids[] = $item->get_id();
-			} elseif ( is_numeric( $item ) ) {
-				$ids[] = (int) $item;
+			$id = Value::order_id( $item );
+			if ( null !== $id ) {
+				$ids[] = $id;
 			}
 		}
 		return $ids;
@@ -449,7 +454,7 @@ final class Repository {
 	/**
 	 * Persist the full set.
 	 *
-	 * @param array<string, array<string, mixed>> $all Statuses keyed by slug.
+	 * @param array<string, Status> $all Statuses keyed by slug.
 	 */
 	private function store( array $all ): void {
 		update_option( self::OPTION, $all, true );
@@ -477,9 +482,9 @@ final class Repository {
 	/**
 	 * Plain text field, falling back to the default when empty.
 	 *
-	 * @param array<string, mixed> $raw     Raw data.
-	 * @param string               $key     Field key.
-	 * @param string               $fallback Default value.
+	 * @param array<mixed, mixed> $raw      Raw data.
+	 * @param string              $key     Field key.
+	 * @param string              $fallback Default value.
 	 */
 	private function text_or_default( array $raw, string $key, string $fallback ): string {
 		$value = trim( sanitize_text_field( $this->to_string( $raw[ $key ] ?? '' ) ) );
@@ -489,9 +494,9 @@ final class Repository {
 	/**
 	 * Rich text field, falling back to the default when empty.
 	 *
-	 * @param array<string, mixed> $raw     Raw data.
-	 * @param string               $key     Field key.
-	 * @param string               $fallback Default value.
+	 * @param array<mixed, mixed> $raw      Raw data.
+	 * @param string              $key     Field key.
+	 * @param string              $fallback Default value.
 	 */
 	private function html_or_default( array $raw, string $key, string $fallback ): string {
 		$value = trim( wp_kses_post( $this->to_string( $raw[ $key ] ?? '' ) ) );

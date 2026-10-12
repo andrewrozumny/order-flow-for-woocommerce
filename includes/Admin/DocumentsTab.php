@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Admin;
 
+use OrderFlowWC\Value;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -85,8 +87,8 @@ final class DocumentsTab implements TabInterface {
 	public function render(): void {
 		$settings = get_option( self::OPTION, array() );
 		$settings = is_array( $settings ) ? $settings : array();
-		$logo_id  = isset( $settings['logo_id'] ) ? (int) $settings['logo_id'] : 0;
-		$details  = isset( $settings['store_details'] ) ? (string) $settings['store_details'] : '';
+		$logo_id  = Value::int( $settings['logo_id'] ?? 0 );
+		$details  = Value::string( $settings['store_details'] ?? '' );
 		$logo_src = $logo_id > 0 ? wp_get_attachment_image_url( $logo_id, 'medium' ) : false;
 
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="ofwc-form">';
@@ -97,7 +99,7 @@ final class DocumentsTab implements TabInterface {
 		echo '<table class="form-table" role="presentation"><tbody>';
 
 		echo '<tr><th scope="row">' . esc_html__( 'Logo', 'order-flow-for-woocommerce' ) . '</th><td>';
-		printf( '<input type="hidden" name="logo_id" id="ofwc-logo-id" value="%d">', (int) $logo_id );
+		printf( '<input type="hidden" name="logo_id" id="ofwc-logo-id" value="%s">', esc_attr( (string) $logo_id ) );
 		printf(
 			'<p><img id="ofwc-logo-preview" src="%1$s" alt="" style="max-width:240px;max-height:90px;%2$s"></p>',
 			esc_url( is_string( $logo_src ) ? $logo_src : '' ),
@@ -128,11 +130,11 @@ final class DocumentsTab implements TabInterface {
 		}
 		check_admin_referer( self::ACTION );
 
-		$logo_id = isset( $_POST['logo_id'] ) ? absint( wp_unslash( $_POST['logo_id'] ) ) : 0;
+		$logo_id = isset( $_POST['logo_id'] ) && is_string( $_POST['logo_id'] ) ? absint( wp_unslash( $_POST['logo_id'] ) ) : 0;
 		if ( $logo_id > 0 && ! wp_attachment_is_image( $logo_id ) ) {
 			$logo_id = 0;
 		}
-		$details = isset( $_POST['store_details'] ) ? wp_kses_post( wp_unslash( $_POST['store_details'] ) ) : '';
+		$details = isset( $_POST['store_details'] ) && is_string( $_POST['store_details'] ) ? wp_kses_post( wp_unslash( $_POST['store_details'] ) ) : '';
 
 		$settings = get_option( self::OPTION, array() );
 		$settings = is_array( $settings ) ? $settings : array();

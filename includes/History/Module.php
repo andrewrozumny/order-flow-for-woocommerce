@@ -126,8 +126,8 @@ final class Module {
 	public static function user_name( int $user_id ): string {
 		if ( $user_id > 0 ) {
 			$user = get_userdata( $user_id );
-			if ( is_object( $user ) && '' !== (string) $user->display_name ) {
-				return (string) $user->display_name;
+			if ( false !== $user && '' !== $user->display_name ) {
+				return $user->display_name;
 			}
 		}
 		return __( 'system', 'order-flow-for-woocommerce' );

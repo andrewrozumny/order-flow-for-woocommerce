@@ -66,7 +66,7 @@ final class Rules {
 				'from'            => $item['from'],
 				'to'              => $item['to'],
 				'roles'           => $roles,
-				'require_comment' => ! empty( $item['require_comment'] ),
+				'require_comment' => (bool) ( $item['require_comment'] ?? false ),
 			);
 		}
 		return $rules;
@@ -108,7 +108,7 @@ final class Rules {
 					$clean[] = $role;
 				}
 			}
-			$comment = ! empty( $item['require_comment'] );
+			$comment = (bool) ( $item['require_comment'] ?? false );
 			$key     = $from . '>' . $to;
 			if ( isset( $merged[ $key ] ) ) {
 				$merged[ $key ]['roles']           = array_values( array_unique( array_merge( $merged[ $key ]['roles'], $clean ) ) );
@@ -239,7 +239,7 @@ final class Rules {
 		if ( ! is_object( $object ) ) {
 			return array();
 		}
-		return array_values( array_filter( (array) $object->roles, 'is_string' ) );
+		return array_values( array_filter( $object->roles, 'is_string' ) );
 	}
 
 	/**
@@ -250,7 +250,7 @@ final class Rules {
 	private function status_slugs(): array {
 		$slugs = array();
 		foreach ( array_keys( wc_get_order_statuses() ) as $key ) {
-			$slugs[] = 0 === strpos( (string) $key, 'wc-' ) ? substr( (string) $key, 3 ) : (string) $key;
+			$slugs[] = 0 === strpos( $key, 'wc-' ) ? substr( $key, 3 ) : $key;
 		}
 		return $slugs;
 	}

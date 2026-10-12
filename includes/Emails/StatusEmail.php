@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace OrderFlowWC\Emails;
 
 use OrderFlowWC\Placeholders;
+use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Value;
 use WC_Email;
 use WC_Order;
 
@@ -23,6 +25,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * only hold the on/off switch, the admin recipient and the email type.
  *
  * Themes override the layout at yourtheme/woocommerce/emails/ofwc-status.php.
+ *
+ * @phpstan-import-type Status from Repository
  */
 class StatusEmail extends WC_Email {
 
@@ -36,7 +40,7 @@ class StatusEmail extends WC_Email {
 	/**
 	 * Status configuration (see Repository).
 	 *
-	 * @var array<string, mixed>
+	 * @var Status
 	 */
 	private array $status;
 
@@ -50,15 +54,16 @@ class StatusEmail extends WC_Email {
 	/**
 	 * Constructor.
 	 *
-	 * @param array<string, mixed> $status         Status configuration.
+	 * @param array<string, mixed> $status Status configuration.
+	 * @phpstan-param Status $status
 	 * @param string               $recipient_type customer or admin.
 	 */
 	public function __construct( array $status, string $recipient_type ) {
 		$this->status         = $status;
 		$this->recipient_type = 'admin' === $recipient_type ? 'admin' : 'customer';
 
-		$slug  = $this->status_string( 'slug' );
-		$label = $this->status_string( 'label' );
+		$slug  = $status['slug'];
+		$label = $status['label'];
 
 		$this->id             = self::email_id( $slug, $this->recipient_type );
 		$this->customer_email = 'customer' === $this->recipient_type;
@@ -83,7 +88,7 @@ class StatusEmail extends WC_Email {
 		parent::__construct();
 
 		if ( 'admin' === $this->recipient_type ) {
-			$this->recipient = (string) $this->get_option( 'recipient', (string) get_option( 'admin_email' ) );
+			$this->recipient = Value::string( $this->get_option( 'recipient', Value::option_string( 'admin_email' ) ) );
 		}
 	}
 
@@ -101,7 +106,7 @@ class StatusEmail extends WC_Email {
 	 * The status slug this email belongs to.
 	 */
 	public function status_slug(): string {
-		return $this->status_string( 'slug' );
+		return $this->status['slug'];
 	}
 
 	/**
@@ -122,7 +127,7 @@ class StatusEmail extends WC_Email {
 				'type'        => 'text',
 				'description' => __( 'Enter recipients (comma separated) for this email.', 'order-flow-for-woocommerce' ),
 				'placeholder' => '',
-				'default'     => (string) get_option( 'admin_email' ),
+				'default'     => Value::option_string( 'admin_email' ),
 				'desc_tip'    => true,
 			);
 		}
@@ -142,51 +147,51 @@ class StatusEmail extends WC_Email {
 	 */
 	public function is_enabled() {
 		$flag = 'admin' === $this->recipient_type ? 'email_admin' : 'email_customer';
-		return parent::is_enabled() && ! empty( $this->status[ $flag ] );
+		return parent::is_enabled() && $this->status[ $flag ];
 	}
 
 	/**
 	 * Default subject (the status text; used by WooCommerce for the settings placeholder).
 	 */
 	public function get_default_subject() {
-		return $this->status_string( 'email_subject' );
+		return $this->status['email_subject'];
 	}
 
 	/**
 	 * Default heading.
 	 */
 	public function get_default_heading() {
-		return $this->status_string( 'email_heading' );
+		return $this->status['email_heading'];
 	}
 
 	/**
 	 * Subject with the placeholders replaced.
 	 */
 	public function get_subject() {
-		$subject = $this->fill( $this->status_string( 'email_subject' ), false );
-		return (string) apply_filters( 'woocommerce_email_subject_' . $this->id, $subject, $this->object, $this ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Same filter WooCommerce applies for its own emails.
+		$subject = $this->fill( $this->status['email_subject'], false );
+		return Value::string( apply_filters( 'woocommerce_email_subject_' . $this->id, $subject, $this->object, $this ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Same filter WooCommerce applies for its own emails.
 	}
 
 	/**
 	 * Heading with the placeholders replaced.
 	 */
 	public function get_heading() {
-		$heading = $this->fill( $this->status_string( 'email_heading' ), false );
-		return (string) apply_filters( 'woocommerce_email_heading_' . $this->id, $heading, $this->object, $this ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Same filter WooCommerce applies for its own emails.
+		$heading = $this->fill( $this->status['email_heading'], false );
+		return Value::string( apply_filters( 'woocommerce_email_heading_' . $this->id, $heading, $this->object, $this ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Same filter WooCommerce applies for its own emails.
 	}
 
 	/**
 	 * Body as HTML, placeholders replaced (values escaped).
 	 */
 	public function get_body_html(): string {
-		return wpautop( wp_kses_post( $this->fill( $this->status_string( 'email_body' ), true ) ) );
+		return wpautop( wp_kses_post( $this->fill( $this->status['email_body'], true ) ) );
 	}
 
 	/**
 	 * Body as plain text.
 	 */
 	public function get_body_plain(): string {
-		$text = $this->fill( $this->status_string( 'email_body' ), false );
+		$text = $this->fill( $this->status['email_body'], false );
 		$text = (string) preg_replace( '#<(br|/p)\s*/?>#i', "\n", $text );
 		return trim( html_entity_decode( wp_strip_all_tags( $text ), ENT_QUOTES, 'UTF-8' ) );
 	}
@@ -197,8 +202,8 @@ class StatusEmail extends WC_Email {
 	 * @return array<int, string>
 	 */
 	public function get_attachments(): array {
-		$attachments = (array) parent::get_attachments();
-		if ( $this->object instanceof WC_Order && ! empty( $this->status['pdf_enabled'] ) && ! empty( $this->status['pdf_attach'] ) ) {
+		$attachments = parent::get_attachments();
+		if ( $this->object instanceof WC_Order && $this->status['pdf_enabled'] && $this->status['pdf_attach'] ) {
 			$extra = apply_filters( 'ofwc_email_attachments', array(), $this->object, $this->status_slug() );
 			if ( is_array( $extra ) ) {
 				$attachments = array_merge( $attachments, $extra );
@@ -247,8 +252,8 @@ class StatusEmail extends WC_Email {
 		}
 
 		$sent = false;
-		if ( $this->is_enabled() && '' !== (string) $this->get_recipient() ) {
-			$sent = (bool) $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
+		if ( $this->is_enabled() && '' !== $this->get_recipient() ) {
+			$sent = $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
 		}
 
 		$this->restore_locale();
@@ -282,16 +287,6 @@ class StatusEmail extends WC_Email {
 		if ( ! $this->object instanceof WC_Order ) {
 			return $text;
 		}
-		return Placeholders::replace( $text, $this->object, $this->status_string( 'label' ), $this->note, $html );
-	}
-
-	/**
-	 * String value from the status configuration.
-	 *
-	 * @param string $key Config key.
-	 */
-	private function status_string( string $key ): string {
-		$value = $this->status[ $key ] ?? '';
-		return is_scalar( $value ) ? (string) $value : '';
+		return Placeholders::replace( $text, $this->object, $this->status['label'], $this->note, $html );
 	}
 }

@@ -12,6 +12,7 @@ namespace OrderFlowWC\Admin;
 use OrderFlowWC\Config\Exporter;
 use OrderFlowWC\Config\Importer;
 use OrderFlowWC\Config\ImportResult;
+use OrderFlowWC\Value;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -105,6 +106,7 @@ final class ImportExport implements TabInterface {
 		header( 'Content-Type: application/json; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="' . sanitize_file_name( $name ) . '"' );
 		header( 'Content-Length: ' . strlen( $json ) );
+		header( 'X-Content-Type-Options: nosniff' );
 		echo $json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON download, not HTML.
 		exit;
 	}
@@ -115,7 +117,7 @@ final class ImportExport implements TabInterface {
 	public function handle_import(): void {
 		$this->authorize( self::ACTION_IMPORT );
 
-		$mode = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : Importer::MODE_MERGE; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified in authorize().
+		$mode = isset( $_POST['mode'] ) && is_string( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : Importer::MODE_MERGE; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified in authorize().
 		$json = $this->read_input();
 		if ( is_wp_error( $json ) ) {
 			Page::flash( 'error', $json->get_error_message() );
@@ -162,23 +164,27 @@ final class ImportExport implements TabInterface {
 	 */
 	private function read_input() {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Verified in authorize().
-		if ( isset( $_FILES['ofwc_file']['error'] ) && UPLOAD_ERR_NO_FILE !== (int) $_FILES['ofwc_file']['error'] ) {
-			$file = $_FILES['ofwc_file']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Only the temporary path and size are used.
-			if ( UPLOAD_ERR_OK !== (int) $file['error'] ) {
+		$file  = isset( $_FILES['ofwc_file'] ) && is_array( $_FILES['ofwc_file'] ) ? $_FILES['ofwc_file'] : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Only the temporary path and size are used.
+		$error = UPLOAD_ERR_NO_FILE;
+		if ( isset( $file['error'] ) ) {
+			$error = is_int( $file['error'] ) ? $file['error'] : UPLOAD_ERR_PARTIAL;
+		}
+		if ( UPLOAD_ERR_NO_FILE !== $error ) {
+			if ( UPLOAD_ERR_OK !== $error ) {
 				return new \WP_Error( 'ofwc_import_upload', __( 'The file could not be uploaded.', 'order-flow-for-woocommerce' ) );
 			}
-			$path = isset( $file['tmp_name'] ) ? (string) $file['tmp_name'] : '';
+			$path = isset( $file['tmp_name'] ) && is_string( $file['tmp_name'] ) ? $file['tmp_name'] : '';
 			if ( '' === $path || ! is_uploaded_file( $path ) ) {
 				return new \WP_Error( 'ofwc_import_upload', __( 'The file could not be uploaded.', 'order-flow-for-woocommerce' ) );
 			}
-			if ( (int) ( $file['size'] ?? 0 ) > Importer::MAX_BYTES ) {
+			if ( Value::int( $file['size'] ?? 0 ) > Importer::MAX_BYTES ) {
 				return new \WP_Error( 'ofwc_import_size', __( 'The file is larger than 1 MB.', 'order-flow-for-woocommerce' ) );
 			}
 			$content = file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading an uploaded temporary file.
 			return is_string( $content ) ? $content : new \WP_Error( 'ofwc_import_upload', __( 'The file could not be read.', 'order-flow-for-woocommerce' ) );
 		}
 
-		$text = isset( $_POST['ofwc_json'] ) ? trim( wp_unslash( (string) $_POST['ofwc_json'] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.NonceVerification.Missing -- JSON is parsed and every field sanitized by the importer.
+		$text = isset( $_POST['ofwc_json'] ) && is_string( $_POST['ofwc_json'] ) ? trim( wp_unslash( $_POST['ofwc_json'] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.NonceVerification.Missing -- JSON is parsed and every field sanitized by the importer.
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 		if ( '' === $text ) {
 			return new \WP_Error( 'ofwc_import_empty', __( 'Choose a file or paste the JSON first.', 'order-flow-for-woocommerce' ) );

@@ -12,6 +12,7 @@ namespace OrderFlowWC\Transitions;
 use Automattic\WooCommerce\Utilities\OrderUtil;
 use OrderFlowWC\History\Context;
 use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Value;
 use WC_Order;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -93,7 +94,7 @@ final class Module {
 	 * Admin-post handler for the Order Flow buttons.
 	 */
 	public function handle_transition(): void {
-		$order_id = isset( $_POST['order_id'] ) ? absint( wp_unslash( $_POST['order_id'] ) ) : 0;
+		$order_id = isset( $_POST['order_id'] ) && is_string( $_POST['order_id'] ) ? absint( wp_unslash( $_POST['order_id'] ) ) : 0;
 		check_admin_referer( self::ACTION . '_' . $order_id, 'ofwc_nonce' );
 
 		$order = $order_id > 0 ? wc_get_order( $order_id ) : false;
@@ -101,8 +102,8 @@ final class Module {
 			wp_die( esc_html__( 'You do not have permission to change this order.', 'order-flow-for-woocommerce' ), '', array( 'response' => 403 ) );
 		}
 
-		$to      = isset( $_POST['ofwc_to'] ) ? sanitize_key( wp_unslash( $_POST['ofwc_to'] ) ) : '';
-		$comment = isset( $_POST['ofwc_comment'] ) ? sanitize_textarea_field( wp_unslash( $_POST['ofwc_comment'] ) ) : '';
+		$to      = isset( $_POST['ofwc_to'] ) && is_string( $_POST['ofwc_to'] ) ? sanitize_key( wp_unslash( $_POST['ofwc_to'] ) ) : '';
+		$comment = isset( $_POST['ofwc_comment'] ) && is_string( $_POST['ofwc_comment'] ) ? sanitize_textarea_field( wp_unslash( $_POST['ofwc_comment'] ) ) : '';
 
 		$result = $this->service->transition( $order, $to, $comment );
 		if ( is_wp_error( $result ) ) {
@@ -202,21 +203,21 @@ final class Module {
 	 * @param mixed $order_id Order id.
 	 */
 	public function guard_order_save( $order_id ): void {
-		if ( ! is_numeric( $order_id ) || ! isset( $_POST['order_status'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by WooCommerce before this hook.
+		$posted = isset( $_POST['order_status'] ) && is_string( $_POST['order_status'] ) ? sanitize_key( wp_unslash( $_POST['order_status'] ) ) : null; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by WooCommerce before this hook.
+		if ( ! is_numeric( $order_id ) || null === $posted ) {
 			return;
 		}
 		$order = wc_get_order( (int) $order_id );
 		if ( ! $order instanceof WC_Order ) {
 			return;
 		}
-		$posted = sanitize_key( wp_unslash( $_POST['order_status'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by WooCommerce before this hook.
-		$to     = 0 === strpos( $posted, 'wc-' ) ? substr( $posted, 3 ) : $posted;
-		$from   = $order->get_status();
+		$to   = 0 === strpos( $posted, 'wc-' ) ? substr( $posted, 3 ) : $posted;
+		$from = $order->get_status();
 		if ( $to === $from || in_array( $from, self::NEW_ORDER_STATUSES, true ) ) {
 			return;
 		}
 
-		$comment = isset( $_POST['ofwc_comment'] ) ? sanitize_textarea_field( wp_unslash( $_POST['ofwc_comment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by WooCommerce before this hook.
+		$comment = isset( $_POST['ofwc_comment'] ) && is_string( $_POST['ofwc_comment'] ) ? sanitize_textarea_field( wp_unslash( $_POST['ofwc_comment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by WooCommerce before this hook.
 		$error   = $this->service->check( $from, $to, $comment, get_current_user_id() );
 		if ( null === $error ) {
 			Context::set( trim( $comment ), get_current_user_id() );
@@ -253,12 +254,12 @@ final class Module {
 			return $actions;
 		}
 		$user = get_current_user_id();
-		foreach ( $this->repository->all() as $slug => $status ) {
-			if ( $this->rules->can_reach( (string) $slug, $user ) ) {
-				$actions[ self::BULK_PREFIX . $slug ] = sprintf(
+		foreach ( $this->repository->all() as $status ) {
+			if ( $this->rules->can_reach( $status['slug'], $user ) ) {
+				$actions[ self::BULK_PREFIX . $status['slug'] ] = sprintf(
 					/* translators: %s: status name. */
 					__( 'Change status to %s', 'order-flow-for-woocommerce' ),
-					(string) $status['label']
+					$status['label']
 				);
 			}
 		}
@@ -288,7 +289,7 @@ final class Module {
 		$changed = 0;
 		$skipped = 0;
 		foreach ( $ids as $id ) {
-			$order = wc_get_order( (int) $id );
+			$order = wc_get_order( Value::int( $id ) );
 			if ( ! $order instanceof WC_Order || true !== $this->service->transition( $order, $to ) ) {
 				++$skipped;
 				continue;
@@ -314,10 +315,10 @@ final class Module {
 	 */
 	private function request_order(): ?WC_Order {
 		$id = 0;
-		if ( isset( $_GET['id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen lookup.
-			$id = absint( wp_unslash( $_GET['id'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		} elseif ( isset( $_GET['post'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$id = absint( wp_unslash( $_GET['post'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['id'] ) && is_string( $_GET['id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen lookup.
+			$id = absint( wp_unslash( $_GET['id'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen lookup.
+		} elseif ( isset( $_GET['post'] ) && is_string( $_GET['post'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen lookup.
+			$id = absint( wp_unslash( $_GET['post'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen lookup.
 		}
 		$order = $id > 0 ? wc_get_order( $id ) : false;
 		return $order instanceof WC_Order ? $order : null;

@@ -11,6 +11,7 @@ namespace OrderFlowWC\Transitions;
 
 use OrderFlowWC\History\History;
 use OrderFlowWC\History\Module as HistoryModule;
+use OrderFlowWC\Value;
 use WC_Order;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -44,7 +45,7 @@ final class MetaBox {
 	 * @param mixed $order_or_post Order or post being edited.
 	 */
 	public function render( $order_or_post ): void {
-		$order = $order_or_post instanceof WC_Order ? $order_or_post : ( is_object( $order_or_post ) && isset( $order_or_post->ID ) ? wc_get_order( (int) $order_or_post->ID ) : false );
+		$order = $order_or_post instanceof WC_Order ? $order_or_post : ( is_object( $order_or_post ) && isset( $order_or_post->ID ) ? wc_get_order( Value::int( $order_or_post->ID ) ) : false );
 		if ( ! $order instanceof WC_Order ) {
 			return;
 		}
@@ -121,7 +122,7 @@ final class MetaBox {
 			echo '<th scope="col">' . esc_html( $heading ) . '</th>';
 		}
 		echo '</tr></thead><tbody>';
-		$format = get_option( 'date_format', 'Y-m-d' ) . ' ' . get_option( 'time_format', 'H:i' ); // Site settings.
+		$format = Value::option_string( 'date_format', 'Y-m-d' ) . ' ' . Value::option_string( 'time_format', 'H:i' ); // Site settings.
 		foreach ( $entries as $entry ) {
 			printf(
 				'<tr><td>%1$s</td><td>%2$s</td><td>%3$s</td><td>%4$s</td><td>%5$s</td></tr>',

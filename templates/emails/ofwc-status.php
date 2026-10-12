@@ -15,6 +15,8 @@
  * @var WC_Email $email         Email object.
  */
 
+declare(strict_types=1);
+
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- These are WooCommerce core email hooks.
 
 if ( ! defined( 'ABSPATH' ) ) {

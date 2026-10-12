@@ -1,0 +1,1131 @@
+# Copyright (C) 2026 Andrew Rozumny
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Order Flow for WooCommerce 0.1.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/order-flow-for-woocommerce\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-10-12T21:22:17+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: order-flow-for-woocommerce\n"
+
+#. Plugin Name of the plugin
+#: order-flow-for-woocommerce.php
+msgid "Order Flow for WooCommerce"
+msgstr ""
+
+#. Plugin URI of the plugin
+#. Author URI of the plugin
+#: order-flow-for-woocommerce.php
+msgid "https://helpmybiz.org"
+msgstr ""
+
+#. Description of the plugin
+#: order-flow-for-woocommerce.php
+msgid "Custom WooCommerce order statuses with transition rules, status history, status emails and PDF documents."
+msgstr ""
+
+#. Author of the plugin
+#: order-flow-for-woocommerce.php
+msgid "Andrew Rozumny"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:90
+#: includes/Admin/Deactivation.php:122
+msgid "Deactivate Order Flow for WooCommerce"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:91
+#: includes/Admin/Deactivation.php:129
+msgid "Deactivate"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:102
+msgid "Deactivate Order Flow"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:115
+#: includes/Admin/Page.php:213
+msgid "You do not have permission to access this page."
+msgstr ""
+
+#: includes/Admin/Deactivation.php:125
+msgid "No orders are in a custom status, so the plugin can be deactivated right away."
+msgstr ""
+
+#: includes/Admin/Deactivation.php:134
+msgid "These orders are in a status created by this plugin:"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:135
+#: includes/Admin/StatusesTab.php:123
+msgid "Status"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:135
+#: includes/Admin/StatusesTab.php:126
+msgid "Orders"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:145
+msgid "What should happen to these orders?"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:146
+msgid "Keep orders in their statuses"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:147
+msgid "While the plugin is inactive WooCommerce does not know these statuses, so the orders will be missing from the usual order lists. The orders are not lost: they come back as soon as you activate the plugin again."
+msgstr ""
+
+#: includes/Admin/Deactivation.php:148
+msgid "Move them to On hold now and restore them when I reactivate"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:149
+msgid "Every order gets a note, is moved to On hold and stays visible in WooCommerce. When you activate the plugin again each one returns to its previous status. No emails are sent for these moves."
+msgstr ""
+
+#: includes/Admin/Deactivation.php:151
+msgid "Deactivate plugin"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:152
+#: includes/Admin/StatusesTab.php:364
+msgid "Cancel"
+msgstr ""
+
+#: includes/Admin/Deactivation.php:161
+#: includes/Admin/DocumentsTab.php:129
+#: includes/Admin/ImportExport.php:155
+#: includes/Admin/StatusesTab.php:447
+#: includes/Admin/TransitionsTab.php:186
+msgid "You do not have permission to do this."
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:60
+#: includes/Admin/Page.php:39
+#: includes/Pdf/Buttons.php:114
+msgid "Documents"
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:78
+msgid "Choose a logo"
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:79
+msgid "Use this image"
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:98
+msgid "These settings apply to every PDF document. Enable documents per status on the Statuses tab."
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:101
+msgid "Logo"
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:108
+msgid "Choose image"
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:109
+#: includes/Admin/TransitionsTab.php:177
+msgid "Remove"
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:110
+msgid "PNG, JPG or GIF up to 2 MB. When empty, the WooCommerce email header image is used if it is stored on this site."
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:113
+msgid "Store details"
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:115
+msgid "Printed in the document header: company name, address, VAT number, contact. Leave empty to use the site name and the WooCommerce store address."
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:119
+msgid "Preview: open any order that has a document and use the Order Flow documents box, or download it from the order list. The document title and text come from the status settings."
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:120
+msgid "Save settings"
+msgstr ""
+
+#: includes/Admin/DocumentsTab.php:152
+msgid "Document settings saved."
+msgstr ""
+
+#: includes/Admin/ImportExport.php:64
+#: includes/Admin/Page.php:40
+msgid "Import / Export"
+msgstr ""
+
+#: includes/Admin/ImportExport.php:71
+msgid "Export"
+msgstr ""
+
+#: includes/Admin/ImportExport.php:72
+msgid "Download your statuses, transition rules and store details as a JSON file. Use it as a backup or to set up another store. The logo and orders are not included."
+msgstr ""
+
+#: includes/Admin/ImportExport.php:76
+msgid "Download export file"
+msgstr ""
+
+#: includes/Admin/ImportExport.php:79
+#: includes/Admin/ImportExport.php:91
+msgid "Import"
+msgstr ""
+
+#: includes/Admin/ImportExport.php:80
+msgid "Upload an Order Flow export file (JSON, up to 1 MB) or paste its content."
+msgstr ""
+
+#: includes/Admin/ImportExport.php:85
+msgid "File"
+msgstr ""
+
+#: includes/Admin/ImportExport.php:86
+msgid "Or paste JSON"
+msgstr ""
+
+#: includes/Admin/ImportExport.php:87
+msgid "Mode"
+msgstr ""
+
+#: includes/Admin/ImportExport.php:88
+msgid "Merge"
+msgstr ""
+
+#: includes/Admin/ImportExport.php:88
+msgid "Add new statuses and update existing ones with the same slug. Nothing is removed."
+msgstr ""
+
+#: includes/Admin/ImportExport.php:89
+msgid "Replace"
+msgstr ""
+
+#: includes/Admin/ImportExport.php:89
+msgid "Like merge, and statuses that are not in the file are removed, but only when no order is in them. Transition rules are replaced by the file's rules."
+msgstr ""
+
+#: includes/Admin/ImportExport.php:135
+msgid "Import finished."
+msgstr ""
+
+#: includes/Admin/ImportExport.php:174
+#: includes/Admin/ImportExport.php:178
+msgid "The file could not be uploaded."
+msgstr ""
+
+#: includes/Admin/ImportExport.php:181
+#: includes/Config/Importer.php:72
+msgid "The file is larger than 1 MB."
+msgstr ""
+
+#: includes/Admin/ImportExport.php:184
+msgid "The file could not be read."
+msgstr ""
+
+#: includes/Admin/ImportExport.php:190
+msgid "Choose a file or paste the JSON first."
+msgstr ""
+
+#: includes/Admin/Page.php:37
+#: includes/Admin/StatusesTab.php:81
+msgid "Statuses"
+msgstr ""
+
+#: includes/Admin/Page.php:38
+#: includes/Admin/TransitionsTab.php:74
+msgid "Transitions"
+msgstr ""
+
+#: includes/Admin/Page.php:125
+#: includes/Admin/Page.php:126
+#: includes/Admin/Page.php:220
+#: includes/Transitions/Module.php:139
+msgid "Order Flow"
+msgstr ""
+
+#: includes/Admin/Page.php:225
+msgid "Order Flow sections"
+msgstr ""
+
+#: includes/Admin/PlaceholderTab.php:64
+msgid "This section is not available yet."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:108
+msgid "Custom order statuses appear next to the WooCommerce ones in the order list, the order screen and reports."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:112
+#: includes/Admin/StatusesTab.php:214
+#: includes/Admin/StatusesTab.php:312
+msgid "Add status"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:116
+msgid "No custom statuses yet. Add your first one to start building your order flow."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:124
+#: includes/Admin/StatusesTab.php:228
+msgid "Slug"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:125
+msgid "Settings"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:158
+msgid "Edit"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:160
+msgid "Delete"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:183
+msgid "Paid"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:184
+msgid "Visible to customer"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:185
+msgid "Reduces stock"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:186
+msgid "Customer email"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:187
+msgid "Admin email"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:188
+msgid "PDF"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:214
+msgid "Edit status"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:222
+msgid "General"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:224
+msgid "Label"
+msgstr ""
+
+#. translators: %d: maximum slug length.
+#: includes/Admin/StatusesTab.php:239
+#, php-format
+msgid "Lowercase letters, numbers and hyphens, up to %d characters. Leave empty to build it from the label. It cannot be changed later."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:242
+msgid "The slug of an existing status cannot be changed."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:245
+msgid "Color"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:247
+msgid "Used for the status badge in the order list."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:249
+#: includes/Admin/StatusesTab.php:250
+msgid "Icon"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:262
+msgid "Position"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:264
+msgid "Statuses are listed after \"Processing\", lowest number first."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:266
+msgid "Behavior"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:267
+msgid "Count as paid"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:267
+msgid "Orders in this status are treated as paid and included in reports."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:268
+msgid "Show to the customer"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:268
+msgid "If off, customers see \"Processing\" in My Account instead of this label."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:269
+msgid "Reduce stock"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:269
+msgid "Reduce stock levels when an order enters this status."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:274
+msgid "Emails"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:276
+msgid "Send email"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:277
+msgid "To the customer"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:278
+msgid "To the shop admin"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:279
+msgid "Sent when an order enters this status. Recipients and on/off switches are also listed under WooCommerce > Settings > Emails."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:281
+msgid "Subject"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:285
+msgid "Heading"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:289
+msgid "Body"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:295
+msgid "PDF document"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:297
+#: includes/Statuses/Repository.php:93
+msgid "Document"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:298
+msgid "Enable PDF for this status"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:298
+msgid "Admins can download it from the order screen. Customers can too if the status is shown to them."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:299
+msgid "Attach to the status emails"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:302
+msgid "Document title"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:304
+msgid "For example \"Approval sheet\". Placeholders are allowed."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:306
+msgid "Text on the document"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:312
+msgid "Save status"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:313
+msgid "Back to statuses"
+msgstr ""
+
+#. translators: %s: status label.
+#: includes/Admin/StatusesTab.php:333
+#, php-format
+msgid "Delete status \"%s\""
+msgstr ""
+
+#. translators: %s: number of orders.
+#: includes/Admin/StatusesTab.php:346
+#, php-format
+msgid "%s order is currently in this status. Choose where to move it."
+msgid_plural "%s orders are currently in this status. Choose where to move them."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Admin/StatusesTab.php:350
+msgid "Move orders to"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:351
+msgid "Select a status"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:360
+msgid "No orders are in this status. Transition rules that mention it will be removed."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:363
+msgid "Delete status"
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:411
+msgid "Status saved."
+msgstr ""
+
+#: includes/Admin/StatusesTab.php:438
+msgid "Status deleted."
+msgstr ""
+
+#. translators: %s: list of placeholders.
+#: includes/Admin/StatusesTab.php:457
+#, php-format
+msgid "Placeholders: %s"
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:89
+msgid "Control who may move an order into or out of your custom statuses."
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:91
+msgid "Changes between two WooCommerce statuses are never restricted."
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:92
+msgid "A change into or out of a custom status needs a matching rule that lists one of the user's roles."
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:93
+msgid "Administrators can always make any change."
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:94
+msgid "Rules apply to people working in wp-admin (order screen, bulk actions, Order Flow buttons). Gateways, the REST API, cron and WP-CLI are not blocked."
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:95
+msgid "\"Require comment\" asks for a note with the change. Bulk actions skip such orders."
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:103
+#: includes/Transitions/MetaBox.php:121
+msgid "From"
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:103
+#: includes/Transitions/MetaBox.php:121
+msgid "To"
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:103
+msgid "Roles"
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:103
+#: includes/Admin/TransitionsTab.php:174
+msgid "Require comment"
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:128
+msgid "Add rule"
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:129
+msgid "Save transitions"
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:146
+msgid "Any status"
+msgstr ""
+
+#: includes/Admin/TransitionsTab.php:197
+msgid "Transitions saved."
+msgstr ""
+
+#: includes/Config/Importer.php:76
+msgid "The file is not valid JSON."
+msgstr ""
+
+#: includes/Config/Importer.php:126
+msgid "Unknown import mode."
+msgstr ""
+
+#: includes/Config/Importer.php:129
+msgid "This file is not an Order Flow export."
+msgstr ""
+
+#: includes/Config/Importer.php:133
+msgid "This export was made by a newer version of the plugin. Update the plugin and try again."
+msgstr ""
+
+#: includes/Config/Importer.php:136
+msgid "The statuses section is invalid or too large."
+msgstr ""
+
+#: includes/Config/Importer.php:151
+msgid "not an object"
+msgstr ""
+
+#: includes/Config/Importer.php:159
+msgid "listed twice"
+msgstr ""
+
+#. translators: 1: number of statuses, 2: list of slugs.
+#: includes/Config/ImportResult.php:106
+#, php-format
+msgid "Added %1$d: %2$s."
+msgstr ""
+
+#. translators: 1: number of statuses, 2: list of slugs.
+#: includes/Config/ImportResult.php:110
+#, php-format
+msgid "Updated %1$d: %2$s."
+msgstr ""
+
+#. translators: %d: number of statuses.
+#: includes/Config/ImportResult.php:114
+#, php-format
+msgid "%d already up to date."
+msgstr ""
+
+#. translators: 1: number of statuses, 2: list of slugs.
+#: includes/Config/ImportResult.php:118
+#, php-format
+msgid "Removed %1$d: %2$s."
+msgstr ""
+
+#. translators: 1: number of statuses, 2: list of slugs with order counts.
+#: includes/Config/ImportResult.php:126
+#, php-format
+msgid "Kept %1$d because orders are still in them: %2$s."
+msgstr ""
+
+#. translators: 1: number of skipped entries, 2: list of entries with reasons.
+#: includes/Config/ImportResult.php:134
+#, php-format
+msgid "Skipped %1$d: %2$s."
+msgstr ""
+
+#. translators: %d: number of transition rules.
+#: includes/Config/ImportResult.php:137
+#, php-format
+msgid "Transition rules stored: %d."
+msgstr ""
+
+#. translators: %d: number of transition rules.
+#: includes/Config/ImportResult.php:140
+#, php-format
+msgid "Transition rules ignored (unknown statuses or duplicates): %d."
+msgstr ""
+
+#. translators: %s: list of role keys.
+#: includes/Config/ImportResult.php:144
+#, php-format
+msgid "Roles that do not exist on this site were dropped: %s."
+msgstr ""
+
+#: includes/Config/ImportResult.php:147
+msgid "Store details updated."
+msgstr ""
+
+#. translators: %s: status label
+#: includes/Emails/StatusEmail.php:72
+#, php-format
+msgid "Order Flow: %s (customer)"
+msgstr ""
+
+#. translators: %s: status label
+#: includes/Emails/StatusEmail.php:74
+#, php-format
+msgid "Order Flow: %s (admin)"
+msgstr ""
+
+#: includes/Emails/StatusEmail.php:75
+msgid "Texts are edited under WooCommerce > Order Flow."
+msgstr ""
+
+#: includes/Emails/StatusEmail.php:118
+msgid "Enable/Disable"
+msgstr ""
+
+#: includes/Emails/StatusEmail.php:120
+msgid "Enable this email notification"
+msgstr ""
+
+#: includes/Emails/StatusEmail.php:126
+msgid "Recipient(s)"
+msgstr ""
+
+#: includes/Emails/StatusEmail.php:128
+msgid "Enter recipients (comma separated) for this email."
+msgstr ""
+
+#: includes/Emails/StatusEmail.php:135
+msgid "Email type"
+msgstr ""
+
+#: includes/Emails/StatusEmail.php:137
+msgid "Choose which format of email to send."
+msgstr ""
+
+#. translators: 1: previous status, 2: new status, 3: user name.
+#: includes/History/Module.php:109
+#, php-format
+msgid "Order Flow: %1$s to %2$s by %3$s."
+msgstr ""
+
+#. translators: %s: comment text.
+#: includes/History/Module.php:116
+#, php-format
+msgid "Comment: %s"
+msgstr ""
+
+#: includes/History/Module.php:133
+msgid "system"
+msgstr ""
+
+#. translators: %s: status slug.
+#: includes/Migration/Orders.php:91
+#, php-format
+msgid "Order Flow: moved to On hold because the plugin is being deactivated. It will return to \"%s\" when the plugin is activated again."
+msgstr ""
+
+#. translators: %s: status slug.
+#: includes/Migration/Orders.php:150
+#, php-format
+msgid "Order Flow: restored to \"%s\" after the plugin was activated again."
+msgstr ""
+
+#: includes/Pdf/Buttons.php:66
+msgid "Order Flow documents"
+msgstr ""
+
+#: includes/Pdf/Buttons.php:86
+msgid "No documents yet. They appear when the order enters a status with PDF documents enabled."
+msgstr ""
+
+#. translators: %s: status label.
+#: includes/Pdf/Buttons.php:95
+#, php-format
+msgid "Download: %s"
+msgstr ""
+
+#. translators: %s: document or status name.
+#: includes/Pdf/Buttons.php:164
+#, php-format
+msgid "Download %s"
+msgstr ""
+
+#: includes/Pdf/Download.php:75
+msgid "Order not found."
+msgstr ""
+
+#: includes/Pdf/Download.php:79
+msgid "This document is not available for the order."
+msgstr ""
+
+#: includes/Pdf/Download.php:85
+msgid "You are not allowed to download this document."
+msgstr ""
+
+#: includes/Pdf/Download.php:90
+msgid "The PDF could not be created."
+msgstr ""
+
+#: includes/Placeholders.php:30
+msgid "Order number"
+msgstr ""
+
+#: includes/Placeholders.php:31
+msgid "Status label"
+msgstr ""
+
+#: includes/Placeholders.php:32
+msgid "Customer billing name"
+msgstr ""
+
+#: includes/Placeholders.php:33
+msgid "Comment entered with the status change"
+msgstr ""
+
+#: includes/Placeholders.php:34
+msgid "Date the order was placed"
+msgstr ""
+
+#: includes/Placeholders.php:35
+msgid "Site title"
+msgstr ""
+
+#: includes/Placeholders.php:36
+msgid "Order total"
+msgstr ""
+
+#: includes/Plugin.php:103
+msgid "Order Flow for WooCommerce needs WooCommerce to be installed and active."
+msgstr ""
+
+#: includes/Statuses/Repository.php:72
+msgid "Dot"
+msgstr ""
+
+#: includes/Statuses/Repository.php:73
+msgid "Flag"
+msgstr ""
+
+#: includes/Statuses/Repository.php:74
+msgid "Clock"
+msgstr ""
+
+#: includes/Statuses/Repository.php:75
+msgid "Calendar"
+msgstr ""
+
+#: includes/Statuses/Repository.php:76
+msgid "Check"
+msgstr ""
+
+#: includes/Statuses/Repository.php:77
+msgid "Check circle"
+msgstr ""
+
+#: includes/Statuses/Repository.php:78
+msgid "Cross"
+msgstr ""
+
+#: includes/Statuses/Repository.php:79
+msgid "Cross circle"
+msgstr ""
+
+#: includes/Statuses/Repository.php:80
+msgid "Warning"
+msgstr ""
+
+#: includes/Statuses/Repository.php:81
+msgid "Info"
+msgstr ""
+
+#: includes/Statuses/Repository.php:82
+msgid "Question"
+msgstr ""
+
+#: includes/Statuses/Repository.php:83
+msgid "Star"
+msgstr ""
+
+#: includes/Statuses/Repository.php:84
+msgid "Heart"
+msgstr ""
+
+#: includes/Statuses/Repository.php:85
+msgid "Lock"
+msgstr ""
+
+#: includes/Statuses/Repository.php:86
+msgid "Unlock"
+msgstr ""
+
+#: includes/Statuses/Repository.php:87
+msgid "Refresh"
+msgstr ""
+
+#: includes/Statuses/Repository.php:88
+msgid "Backup"
+msgstr ""
+
+#: includes/Statuses/Repository.php:89
+msgid "Hammer"
+msgstr ""
+
+#: includes/Statuses/Repository.php:90
+msgid "Tools"
+msgstr ""
+
+#: includes/Statuses/Repository.php:91
+msgid "Gear"
+msgstr ""
+
+#: includes/Statuses/Repository.php:92
+msgid "Palette"
+msgstr ""
+
+#: includes/Statuses/Repository.php:94
+msgid "Clipboard"
+msgstr ""
+
+#: includes/Statuses/Repository.php:95
+msgid "Text file"
+msgstr ""
+
+#: includes/Statuses/Repository.php:96
+msgid "Email"
+msgstr ""
+
+#: includes/Statuses/Repository.php:97
+msgid "Phone"
+msgstr ""
+
+#: includes/Statuses/Repository.php:98
+msgid "Cart"
+msgstr ""
+
+#: includes/Statuses/Repository.php:99
+#: templates/pdf/document.php:92
+msgid "Product"
+msgstr ""
+
+#: includes/Statuses/Repository.php:100
+msgid "Archive"
+msgstr ""
+
+#: includes/Statuses/Repository.php:101
+msgid "Building"
+msgstr ""
+
+#: includes/Statuses/Repository.php:102
+msgid "Location"
+msgstr ""
+
+#: includes/Statuses/Repository.php:103
+msgid "Airplane"
+msgstr ""
+
+#: includes/Statuses/Repository.php:104
+msgid "Money"
+msgstr ""
+
+#: includes/Statuses/Repository.php:105
+msgid "Ticket"
+msgstr ""
+
+#: includes/Statuses/Repository.php:106
+msgid "Thumbs up"
+msgstr ""
+
+#: includes/Statuses/Repository.php:107
+msgid "Thumbs down"
+msgstr ""
+
+#: includes/Statuses/Repository.php:108
+msgid "Eye"
+msgstr ""
+
+#: includes/Statuses/Repository.php:109
+msgid "Search"
+msgstr ""
+
+#: includes/Statuses/Repository.php:110
+msgid "Pause"
+msgstr ""
+
+#: includes/Statuses/Repository.php:130
+msgid "Your {site_title} order {order_number} is now {status}"
+msgstr ""
+
+#: includes/Statuses/Repository.php:131
+msgid "Order {status}"
+msgstr ""
+
+#: includes/Statuses/Repository.php:132
+msgid "<p>Hi {customer_name},</p><p>Your order {order_number} is now {status}.</p><p>{note}</p>"
+msgstr ""
+
+#: includes/Statuses/Repository.php:260
+msgid "Enter a slug for the status."
+msgstr ""
+
+#: includes/Statuses/Repository.php:263
+msgid "The slug may only contain lowercase letters, numbers and hyphens, and cannot start or end with a hyphen."
+msgstr ""
+
+#. translators: %d: maximum number of characters in a status slug.
+#: includes/Statuses/Repository.php:270
+#, php-format
+msgid "The slug can be at most %d characters long."
+msgstr ""
+
+#: includes/Statuses/Repository.php:276
+msgid "This slug is used by a WooCommerce core status. Choose another one."
+msgstr ""
+
+#: includes/Statuses/Repository.php:279
+msgid "Enter a label for the status."
+msgstr ""
+
+#: includes/Statuses/Repository.php:285
+msgid "A status with this slug already exists."
+msgstr ""
+
+#: includes/Statuses/Repository.php:288
+msgid "Another plugin already registers an order status with this slug."
+msgstr ""
+
+#: includes/Statuses/Repository.php:292
+msgid "The slug of an existing status cannot be changed because orders reference it."
+msgstr ""
+
+#: includes/Statuses/Repository.php:295
+#: includes/Statuses/Repository.php:354
+msgid "This status does not exist."
+msgstr ""
+
+#: includes/Statuses/Repository.php:361
+msgid "Choose a status for the orders that are currently in this one."
+msgstr ""
+
+#: includes/Statuses/Repository.php:364
+msgid "The chosen target status is not valid."
+msgstr ""
+
+#: includes/Statuses/Repository.php:393
+msgid "Some orders could not be moved to the target status. The status was not deleted."
+msgstr ""
+
+#: includes/Statuses/Repository.php:400
+msgid "Order Flow: the previous status was deleted."
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:54
+msgid "Save the order first. Status changes and history appear here afterwards."
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:62
+msgid "Current status:"
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:81
+msgid "You cannot move this order to another status."
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:95
+msgid "(comment required)"
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:100
+#: includes/Transitions/MetaBox.php:121
+msgid "Comment"
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:100
+msgid "(required for this change)"
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:103
+msgid "* This change needs a comment."
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:114
+msgid "Status history"
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:116
+msgid "No status changes recorded yet."
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:121
+msgid "When"
+msgstr ""
+
+#: includes/Transitions/MetaBox.php:121
+msgid "Who"
+msgstr ""
+
+#: includes/Transitions/Module.php:102
+msgid "You do not have permission to change this order."
+msgstr ""
+
+#. translators: %s: status name.
+#: includes/Transitions/Module.php:116
+#, php-format
+msgid "Order status changed to %s."
+msgstr ""
+
+#: includes/Transitions/Module.php:162
+msgid "Please enter a comment for this status change."
+msgstr ""
+
+#. translators: 1: target status name, 2: reason.
+#: includes/Transitions/Module.php:232
+#, php-format
+msgid "The order was not moved to %1$s. %2$s"
+msgstr ""
+
+#. translators: %s: status name.
+#: includes/Transitions/Module.php:261
+#, php-format
+msgid "Change status to %s"
+msgstr ""
+
+#. translators: 1: status name, 2: changed orders, 3: skipped orders.
+#: includes/Transitions/Module.php:304
+#, php-format
+msgid "Change status to %1$s: %2$d changed, %3$d skipped (not allowed, already in this status or a comment is required)."
+msgstr ""
+
+#: includes/Transitions/Service.php:80
+msgid "The target status does not exist."
+msgstr ""
+
+#: includes/Transitions/Service.php:83
+msgid "The order already has this status."
+msgstr ""
+
+#: includes/Transitions/Service.php:86
+msgid "You are not allowed to make this status change."
+msgstr ""
+
+#: includes/Transitions/Service.php:89
+msgid "This status change needs a comment."
+msgstr ""
+
+#: templates/pdf/document.php:74
+msgid "Order"
+msgstr ""
+
+#: templates/pdf/document.php:81
+msgid "Billing address"
+msgstr ""
+
+#: templates/pdf/document.php:85
+msgid "Shipping address"
+msgstr ""
+
+#: templates/pdf/document.php:93
+msgid "Qty"
+msgstr ""
+
+#: templates/pdf/document.php:94
+msgid "Unit price"
+msgstr ""
+
+#: templates/pdf/document.php:95
+msgid "Total"
+msgstr ""
+
+#: templates/pdf/document.php:103
+msgid "SKU:"
+msgstr ""

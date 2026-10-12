@@ -23,3 +23,4 @@ phpunit.xml.dist
 README.md
 CHANGELOG.md
 *.zip
+psalm.xml.dist

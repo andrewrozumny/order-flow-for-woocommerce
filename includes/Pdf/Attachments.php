@@ -19,6 +19,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Implements the `ofwc_email_attachments` filter: renders the document into uploads/ofwc-tmp/
  * under a random name and deletes the file at shutdown.
+ *
+ * @phpstan-import-type Status from Repository
  */
 final class Attachments {
 
@@ -66,9 +68,9 @@ final class Attachments {
 	/**
 	 * Add the document to the attachment list.
 	 *
-	 * @param mixed  $paths  Attachment paths so far.
-	 * @param mixed  $order  Order.
-	 * @param string $status Status slug.
+	 * @param mixed $paths  Attachment paths so far.
+	 * @param mixed $order  Order.
+	 * @param mixed $status Status slug.
 	 * @return mixed
 	 */
 	public function filter( $paths, $order = null, $status = '' ) {
@@ -76,7 +78,7 @@ final class Attachments {
 			return $paths;
 		}
 		$config = $this->repository->get( $status );
-		if ( null === $config || empty( $config['pdf_enabled'] ) ) {
+		if ( null === $config || ! $config['pdf_enabled'] ) {
 			return $paths;
 		}
 		$file = $this->write( $order, $status, $config );
@@ -92,6 +94,7 @@ final class Attachments {
 	 * @param WC_Order             $order  Order.
 	 * @param string               $slug   Status slug.
 	 * @param array<string, mixed> $config Status config.
+	 * @phpstan-param Status $config
 	 * @return string File path or ''.
 	 */
 	private function write( WC_Order $order, string $slug, array $config ): string {
@@ -138,7 +141,7 @@ final class Attachments {
 	 */
 	private function directory(): string {
 		$uploads = wp_upload_dir();
-		if ( empty( $uploads['basedir'] ) || ! is_string( $uploads['basedir'] ) ) {
+		if ( '' === $uploads['basedir'] ) {
 			return '';
 		}
 		$dir = untrailingslashit( $uploads['basedir'] ) . '/' . self::DIR;

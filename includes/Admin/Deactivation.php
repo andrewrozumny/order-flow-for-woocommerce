@@ -134,8 +134,8 @@ final class Deactivation {
 		echo '<p>' . esc_html__( 'These orders are in a status created by this plugin:', 'order-flow-for-woocommerce' ) . '</p>';
 		echo '<table class="wp-list-table widefat striped" style="max-width:480px"><thead><tr><th scope="col">' . esc_html__( 'Status', 'order-flow-for-woocommerce' ) . '</th><th scope="col">' . esc_html__( 'Orders', 'order-flow-for-woocommerce' ) . '</th></tr></thead><tbody>';
 		foreach ( $counts as $slug => $count ) {
-			$label = isset( $statuses[ $slug ]['label'] ) && is_string( $statuses[ $slug ]['label'] ) ? $statuses[ $slug ]['label'] : $slug;
-			printf( '<tr><td>%1$s</td><td>%2$d</td></tr>', esc_html( $label ), (int) $count );
+			$label = isset( $statuses[ $slug ] ) ? $statuses[ $slug ]['label'] : $slug;
+			printf( '<tr><td>%1$s</td><td>%2$s</td></tr>', esc_html( $label ), esc_html( (string) $count ) );
 		}
 		echo '</tbody></table>';
 
@@ -162,7 +162,7 @@ final class Deactivation {
 		}
 		check_admin_referer( self::ACTION, '_ofwc_nonce' );
 
-		$choice = Decisions::choice( isset( $_POST['choice'] ) ? sanitize_key( wp_unslash( $_POST['choice'] ) ) : '' );
+		$choice = Decisions::choice( isset( $_POST['choice'] ) && is_string( $_POST['choice'] ) ? sanitize_key( wp_unslash( $_POST['choice'] ) ) : '' );
 		if ( Decisions::CHOICE_MOVE === $choice ) {
 			if ( function_exists( 'set_time_limit' ) ) {
 				@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Squiz.PHP.DiscouragedFunctions.Discouraged -- Large shops may need more time.

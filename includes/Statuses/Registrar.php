@@ -59,7 +59,7 @@ final class Registrar {
 	 */
 	public function register_post_statuses(): void {
 		foreach ( $this->repository->all() as $slug => $status ) {
-			$label = (string) $status['label'];
+			$label = $status['label'];
 			// Same shape as _n_noop(); the label is user-defined data, not a translatable string.
 			$count = str_replace( '%', '%%', $label ) . ' <span class="count">(%s)</span>';
 
@@ -103,8 +103,8 @@ final class Registrar {
 		$added = array();
 		foreach ( $custom as $slug => $status ) {
 			$hide                   = $mask && ! $status['show_in_account'];
-			$fallback               = isset( $statuses['wc-processing'] ) ? $statuses['wc-processing'] : (string) $status['label'];
-			$added[ 'wc-' . $slug ] = $hide ? $fallback : (string) $status['label'];
+			$fallback               = isset( $statuses['wc-processing'] ) ? $statuses['wc-processing'] : $status['label'];
+			$added[ 'wc-' . $slug ] = $hide ? $fallback : $status['label'];
 		}
 
 		if ( ! array_key_exists( 'wc-processing', $statuses ) ) {
@@ -134,7 +134,7 @@ final class Registrar {
 		if ( ! is_array( $statuses ) ) {
 			return $statuses;
 		}
-		return array_values( array_unique( array_merge( $statuses, $this->slugs_where( 'paid' ) ) ) );
+		return $this->with_paid_slugs( $statuses );
 	}
 
 	/**
@@ -147,7 +147,7 @@ final class Registrar {
 		if ( ! is_array( $statuses ) ) {
 			return $statuses;
 		}
-		return array_values( array_unique( array_merge( $statuses, $this->slugs_where( 'paid' ) ) ) );
+		return $this->with_paid_slugs( $statuses );
 	}
 
 	/**
@@ -157,12 +157,12 @@ final class Registrar {
 	 * @param string $from     Previous status, no prefix.
 	 * @param string $to       New status, no prefix.
 	 */
-	public function maybe_reduce_stock( $order_id, $from, $to ): void {
+	public function maybe_reduce_stock( int $order_id, string $from, string $to ): void {
 		unset( $from );
-		if ( ! in_array( (string) $to, $this->slugs_where( 'reduce_stock' ), true ) ) {
+		if ( ! in_array( $to, $this->slugs_where( 'reduce_stock' ), true ) ) {
 			return;
 		}
-		wc_maybe_reduce_stock_levels( (int) $order_id );
+		wc_maybe_reduce_stock_levels( $order_id );
 	}
 
 	/**
@@ -185,7 +185,7 @@ final class Registrar {
 	public function status_css(): string {
 		$css = '';
 		foreach ( $this->repository->all() as $slug => $status ) {
-			$color = (string) $status['color'];
+			$color = $status['color'];
 			$css  .= sprintf(
 				'.order-status.status-%1$s{background:%2$s;color:%3$s;}',
 				$slug,
@@ -216,17 +216,27 @@ final class Registrar {
 	/**
 	 * Slugs of the statuses where a boolean flag is on.
 	 *
-	 * @param string $flag Field key.
+	 * @param 'paid'|'reduce_stock' $flag Field key.
 	 * @return string[]
 	 */
 	private function slugs_where( string $flag ): array {
 		$slugs = array();
-		foreach ( $this->repository->all() as $slug => $status ) {
-			if ( ! empty( $status[ $flag ] ) ) {
-				$slugs[] = (string) $slug;
+		foreach ( $this->repository->all() as $status ) {
+			if ( $status[ $flag ] ) {
+				$slugs[] = $status['slug'];
 			}
 		}
 		return $slugs;
+	}
+
+	/**
+	 * The given status list plus the slugs of the paid custom statuses, without duplicates.
+	 *
+	 * @param array<mixed, mixed> $statuses Status slugs from WooCommerce.
+	 * @return array<int, bool|float|int|string>
+	 */
+	private function with_paid_slugs( array $statuses ): array {
+		return array_values( array_unique( array_merge( array_filter( $statuses, 'is_scalar' ), $this->slugs_where( 'paid' ) ) ) );
 	}
 
 	/**

@@ -49,7 +49,7 @@ final class Service {
 	 */
 	public function transition( WC_Order $order, string $to, string $comment = '', ?int $user_id = null ) {
 		$to      = 0 === strpos( $to, 'wc-' ) ? substr( $to, 3 ) : $to;
-		$user_id = $user_id ?? (int) get_current_user_id();
+		$user_id = $user_id ?? get_current_user_id();
 		$comment = trim( $comment );
 		$from    = $order->get_status();
 

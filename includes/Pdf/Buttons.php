@@ -20,6 +20,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Surfaces the available documents to staff and customers.
+ *
+ * @phpstan-import-type Status from Repository
  */
 final class Buttons {
 
@@ -85,12 +87,12 @@ final class Buttons {
 			return;
 		}
 		echo '<p>';
-		foreach ( $available as $slug => $status ) {
+		foreach ( $available as $status ) {
 			printf(
 				'<a href="%1$s" class="button" style="margin:0 6px 6px 0">%2$s</a>',
-				esc_url( Documents::url( $order, (string) $slug ) ),
+				esc_url( Documents::url( $order, $status['slug'] ) ),
 				/* translators: %s: status label. */
-				esc_html( sprintf( __( 'Download: %s', 'order-flow-for-woocommerce' ), (string) $status['label'] ) )
+				esc_html( sprintf( __( 'Download: %s', 'order-flow-for-woocommerce' ), $status['label'] ) )
 			);
 		}
 		echo '</p>';
@@ -152,14 +154,14 @@ final class Buttons {
 	 */
 	private function customer_documents( WC_Order $order ): array {
 		$links = array();
-		foreach ( $this->documents->available( $order ) as $slug => $status ) {
-			if ( empty( $status['show_in_account'] ) ) {
+		foreach ( $this->documents->available( $order ) as $status ) {
+			if ( ! $status['show_in_account'] ) {
 				continue;
 			}
-			$links[ (string) $slug ] = array(
-				'url'  => Documents::url( $order, (string) $slug ),
+			$links[ $status['slug'] ] = array(
+				'url'  => Documents::url( $order, $status['slug'] ),
 				/* translators: %s: document or status name. */
-				'name' => sprintf( __( 'Download %s', 'order-flow-for-woocommerce' ), (string) $status['label'] ),
+				'name' => sprintf( __( 'Download %s', 'order-flow-for-woocommerce' ), $status['label'] ),
 			);
 		}
 		return $links;

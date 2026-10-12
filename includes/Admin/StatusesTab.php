@@ -20,6 +20,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Manages the custom statuses. All writes go through admin-post.php with a nonce
  * and the manage_woocommerce capability.
+ *
+ * @phpstan-import-type Status from Repository
  */
 final class StatusesTab implements TabInterface {
 
@@ -83,8 +85,8 @@ final class StatusesTab implements TabInterface {
 	 * Render the tab: list, form or delete confirmation.
 	 */
 	public function render(): void {
-		$view = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( $_GET['view'] ) ) : 'list'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only view switch.
-		$slug = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only view switch.
+		$view = isset( $_GET['view'] ) && is_string( $_GET['view'] ) ? sanitize_key( wp_unslash( $_GET['view'] ) ) : 'list'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only view switch.
+		$slug = isset( $_GET['status'] ) && is_string( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only view switch.
 
 		if ( 'add' === $view ) {
 			$this->render_form( null );
@@ -124,7 +126,8 @@ final class StatusesTab implements TabInterface {
 			esc_html__( 'Orders', 'order-flow-for-woocommerce' )
 		);
 
-		foreach ( $statuses as $slug => $status ) {
+		foreach ( $statuses as $status ) {
+			$slug   = $status['slug'];
 			$edit   = Page::url(
 				'statuses',
 				array(
@@ -144,10 +147,10 @@ final class StatusesTab implements TabInterface {
 			echo '<tr><td class="column-primary">';
 			printf(
 				'<span class="ofwc-swatch" style="background:%1$s"></span><span class="dashicons %2$s ofwc-icon"></span><strong><a href="%3$s">%4$s</a></strong>',
-				esc_attr( (string) $status['color'] ),
-				esc_attr( (string) $status['icon'] ),
+				esc_attr( $status['color'] ),
+				esc_attr( $status['icon'] ),
 				esc_url( $edit ),
-				esc_html( (string) $status['label'] )
+				esc_html( $status['label'] )
 			);
 			printf(
 				'<div class="row-actions visible"><span class="edit"><a href="%1$s">%2$s</a> | </span><span class="delete"><a href="%3$s" class="submitdelete">%4$s</a></span></div>',
@@ -172,6 +175,7 @@ final class StatusesTab implements TabInterface {
 	 * Short labels for the enabled flags of a status.
 	 *
 	 * @param array<string, mixed> $status Status.
+	 * @phpstan-param Status $status
 	 * @return string[]
 	 */
 	private function flags( array $status ): array {
@@ -185,7 +189,7 @@ final class StatusesTab implements TabInterface {
 		);
 		$out = array();
 		foreach ( $map as $key => $label ) {
-			if ( ! empty( $status[ $key ] ) ) {
+			if ( $status[ $key ] ) {
 				$out[] = $label;
 			}
 		}
@@ -218,14 +222,14 @@ final class StatusesTab implements TabInterface {
 		echo '<h3>' . esc_html__( 'General', 'order-flow-for-woocommerce' ) . '</h3><table class="form-table" role="presentation"><tbody>';
 
 		$this->row_start( 'ofwc-label', __( 'Label', 'order-flow-for-woocommerce' ) );
-		printf( '<input type="text" id="ofwc-label" name="label" class="regular-text" value="%s" required>', esc_attr( (string) $status['label'] ) );
+		printf( '<input type="text" id="ofwc-label" name="label" class="regular-text" value="%s" required>', esc_attr( $status['label'] ) );
 		$this->row_end();
 
 		$this->row_start( 'ofwc-slug', __( 'Slug', 'order-flow-for-woocommerce' ) );
 		printf(
-			'<input type="text" id="ofwc-slug" name="slug" class="regular-text code" maxlength="%1$d" value="%2$s"%3$s>',
-			(int) Repository::MAX_SLUG_LENGTH,
-			esc_attr( (string) $status['slug'] ),
+			'<input type="text" id="ofwc-slug" name="slug" class="regular-text code" maxlength="%1$s" value="%2$s"%3$s>',
+			esc_attr( (string) Repository::MAX_SLUG_LENGTH ),
+			esc_attr( $status['slug'] ),
 			$is_new ? '' : ' readonly'
 		);
 		$this->row_end(
@@ -239,7 +243,7 @@ final class StatusesTab implements TabInterface {
 		);
 
 		$this->row_start( 'ofwc-color', __( 'Color', 'order-flow-for-woocommerce' ) );
-		printf( '<input type="text" id="ofwc-color" name="color" class="ofwc-color-field" value="%s" data-default-color="#777777">', esc_attr( (string) $status['color'] ) );
+		printf( '<input type="text" id="ofwc-color" name="color" class="ofwc-color-field" value="%s" data-default-color="#777777">', esc_attr( $status['color'] ) );
 		$this->row_end( __( 'Used for the status badge in the order list.', 'order-flow-for-woocommerce' ) );
 
 		$this->row_start( '', __( 'Icon', 'order-flow-for-woocommerce' ) );
@@ -256,13 +260,13 @@ final class StatusesTab implements TabInterface {
 		$this->row_end();
 
 		$this->row_start( 'ofwc-position', __( 'Position', 'order-flow-for-woocommerce' ) );
-		printf( '<input type="number" id="ofwc-position" name="position" class="small-text" value="%d">', (int) $status['position'] );
+		printf( '<input type="number" id="ofwc-position" name="position" class="small-text" value="%s">', esc_attr( (string) $status['position'] ) );
 		$this->row_end( __( 'Statuses are listed after "Processing", lowest number first.', 'order-flow-for-woocommerce' ) );
 
 		$this->row_start( '', __( 'Behavior', 'order-flow-for-woocommerce' ) );
-		$this->checkbox( 'paid', __( 'Count as paid', 'order-flow-for-woocommerce' ), (bool) $status['paid'], __( 'Orders in this status are treated as paid and included in reports.', 'order-flow-for-woocommerce' ) );
-		$this->checkbox( 'show_in_account', __( 'Show to the customer', 'order-flow-for-woocommerce' ), (bool) $status['show_in_account'], __( 'If off, customers see "Processing" in My Account instead of this label.', 'order-flow-for-woocommerce' ) );
-		$this->checkbox( 'reduce_stock', __( 'Reduce stock', 'order-flow-for-woocommerce' ), (bool) $status['reduce_stock'], __( 'Reduce stock levels when an order enters this status.', 'order-flow-for-woocommerce' ) );
+		$this->checkbox( 'paid', __( 'Count as paid', 'order-flow-for-woocommerce' ), $status['paid'], __( 'Orders in this status are treated as paid and included in reports.', 'order-flow-for-woocommerce' ) );
+		$this->checkbox( 'show_in_account', __( 'Show to the customer', 'order-flow-for-woocommerce' ), $status['show_in_account'], __( 'If off, customers see "Processing" in My Account instead of this label.', 'order-flow-for-woocommerce' ) );
+		$this->checkbox( 'reduce_stock', __( 'Reduce stock', 'order-flow-for-woocommerce' ), $status['reduce_stock'], __( 'Reduce stock levels when an order enters this status.', 'order-flow-for-woocommerce' ) );
 		$this->row_end();
 
 		echo '</tbody></table>';
@@ -270,20 +274,20 @@ final class StatusesTab implements TabInterface {
 		echo '<h3>' . esc_html__( 'Emails', 'order-flow-for-woocommerce' ) . '</h3><table class="form-table" role="presentation"><tbody>';
 
 		$this->row_start( '', __( 'Send email', 'order-flow-for-woocommerce' ) );
-		$this->checkbox( 'email_customer', __( 'To the customer', 'order-flow-for-woocommerce' ), (bool) $status['email_customer'] );
-		$this->checkbox( 'email_admin', __( 'To the shop admin', 'order-flow-for-woocommerce' ), (bool) $status['email_admin'] );
+		$this->checkbox( 'email_customer', __( 'To the customer', 'order-flow-for-woocommerce' ), $status['email_customer'] );
+		$this->checkbox( 'email_admin', __( 'To the shop admin', 'order-flow-for-woocommerce' ), $status['email_admin'] );
 		$this->row_end( __( 'Sent when an order enters this status. Recipients and on/off switches are also listed under WooCommerce > Settings > Emails.', 'order-flow-for-woocommerce' ) );
 
 		$this->row_start( 'ofwc-email-subject', __( 'Subject', 'order-flow-for-woocommerce' ) );
-		printf( '<input type="text" id="ofwc-email-subject" name="email_subject" class="large-text" value="%s">', esc_attr( (string) $status['email_subject'] ) );
+		printf( '<input type="text" id="ofwc-email-subject" name="email_subject" class="large-text" value="%s">', esc_attr( $status['email_subject'] ) );
 		$this->row_end();
 
 		$this->row_start( 'ofwc-email-heading', __( 'Heading', 'order-flow-for-woocommerce' ) );
-		printf( '<input type="text" id="ofwc-email-heading" name="email_heading" class="large-text" value="%s">', esc_attr( (string) $status['email_heading'] ) );
+		printf( '<input type="text" id="ofwc-email-heading" name="email_heading" class="large-text" value="%s">', esc_attr( $status['email_heading'] ) );
 		$this->row_end();
 
 		$this->row_start( 'ofwc-email-body', __( 'Body', 'order-flow-for-woocommerce' ) );
-		printf( '<textarea id="ofwc-email-body" name="email_body" class="large-text" rows="6">%s</textarea>', esc_textarea( (string) $status['email_body'] ) );
+		printf( '<textarea id="ofwc-email-body" name="email_body" class="large-text" rows="6">%s</textarea>', esc_textarea( $status['email_body'] ) );
 		$this->row_end( $this->placeholder_help() );
 
 		echo '</tbody></table>';
@@ -291,16 +295,16 @@ final class StatusesTab implements TabInterface {
 		echo '<h3>' . esc_html__( 'PDF document', 'order-flow-for-woocommerce' ) . '</h3><table class="form-table" role="presentation"><tbody>';
 
 		$this->row_start( '', __( 'Document', 'order-flow-for-woocommerce' ) );
-		$this->checkbox( 'pdf_enabled', __( 'Enable PDF for this status', 'order-flow-for-woocommerce' ), (bool) $status['pdf_enabled'], __( 'Admins can download it from the order screen. Customers can too if the status is shown to them.', 'order-flow-for-woocommerce' ) );
-		$this->checkbox( 'pdf_attach', __( 'Attach to the status emails', 'order-flow-for-woocommerce' ), (bool) $status['pdf_attach'] );
+		$this->checkbox( 'pdf_enabled', __( 'Enable PDF for this status', 'order-flow-for-woocommerce' ), $status['pdf_enabled'], __( 'Admins can download it from the order screen. Customers can too if the status is shown to them.', 'order-flow-for-woocommerce' ) );
+		$this->checkbox( 'pdf_attach', __( 'Attach to the status emails', 'order-flow-for-woocommerce' ), $status['pdf_attach'] );
 		$this->row_end();
 
 		$this->row_start( 'ofwc-pdf-title', __( 'Document title', 'order-flow-for-woocommerce' ) );
-		printf( '<input type="text" id="ofwc-pdf-title" name="pdf_title" class="regular-text" value="%s">', esc_attr( (string) $status['pdf_title'] ) );
+		printf( '<input type="text" id="ofwc-pdf-title" name="pdf_title" class="regular-text" value="%s">', esc_attr( $status['pdf_title'] ) );
 		$this->row_end( __( 'For example "Approval sheet". Placeholders are allowed.', 'order-flow-for-woocommerce' ) );
 
 		$this->row_start( 'ofwc-pdf-text', __( 'Text on the document', 'order-flow-for-woocommerce' ) );
-		printf( '<textarea id="ofwc-pdf-text" name="pdf_text" class="large-text" rows="5">%s</textarea>', esc_textarea( (string) $status['pdf_text'] ) );
+		printf( '<textarea id="ofwc-pdf-text" name="pdf_text" class="large-text" rows="5">%s</textarea>', esc_textarea( $status['pdf_text'] ) );
 		$this->row_end( $this->placeholder_help() );
 
 		echo '</tbody></table>';
@@ -327,7 +331,7 @@ final class StatusesTab implements TabInterface {
 			sprintf(
 				/* translators: %s: status label. */
 				__( 'Delete status "%s"', 'order-flow-for-woocommerce' ),
-				(string) $status['label']
+				$status['label']
 			)
 		) . '</h2>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="ofwc-form">';
@@ -368,25 +372,25 @@ final class StatusesTab implements TabInterface {
 		$this->authorize();
 		check_admin_referer( self::ACTION_SAVE );
 
-		$editing = isset( $_POST['editing'] ) ? sanitize_key( wp_unslash( $_POST['editing'] ) ) : '';
+		$editing = isset( $_POST['editing'] ) && is_string( $_POST['editing'] ) ? sanitize_key( wp_unslash( $_POST['editing'] ) ) : '';
 		$input   = array(
-			'label'         => isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '',
-			'slug'          => isset( $_POST['slug'] ) ? sanitize_text_field( wp_unslash( $_POST['slug'] ) ) : '',
-			'color'         => isset( $_POST['color'] ) ? sanitize_text_field( wp_unslash( $_POST['color'] ) ) : '',
-			'icon'          => isset( $_POST['icon'] ) ? sanitize_text_field( wp_unslash( $_POST['icon'] ) ) : '',
-			'position'      => isset( $_POST['position'] ) ? (int) $_POST['position'] : 0,
-			'email_subject' => isset( $_POST['email_subject'] ) ? sanitize_text_field( wp_unslash( $_POST['email_subject'] ) ) : '',
-			'email_heading' => isset( $_POST['email_heading'] ) ? sanitize_text_field( wp_unslash( $_POST['email_heading'] ) ) : '',
-			'email_body'    => isset( $_POST['email_body'] ) ? wp_kses_post( wp_unslash( $_POST['email_body'] ) ) : '',
-			'pdf_title'     => isset( $_POST['pdf_title'] ) ? sanitize_text_field( wp_unslash( $_POST['pdf_title'] ) ) : '',
-			'pdf_text'      => isset( $_POST['pdf_text'] ) ? wp_kses_post( wp_unslash( $_POST['pdf_text'] ) ) : '',
+			'label'         => isset( $_POST['label'] ) && is_string( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '',
+			'slug'          => isset( $_POST['slug'] ) && is_string( $_POST['slug'] ) ? sanitize_text_field( wp_unslash( $_POST['slug'] ) ) : '',
+			'color'         => isset( $_POST['color'] ) && is_string( $_POST['color'] ) ? sanitize_text_field( wp_unslash( $_POST['color'] ) ) : '',
+			'icon'          => isset( $_POST['icon'] ) && is_string( $_POST['icon'] ) ? sanitize_text_field( wp_unslash( $_POST['icon'] ) ) : '',
+			'position'      => isset( $_POST['position'] ) && is_scalar( $_POST['position'] ) ? (int) $_POST['position'] : 0,
+			'email_subject' => isset( $_POST['email_subject'] ) && is_string( $_POST['email_subject'] ) ? sanitize_text_field( wp_unslash( $_POST['email_subject'] ) ) : '',
+			'email_heading' => isset( $_POST['email_heading'] ) && is_string( $_POST['email_heading'] ) ? sanitize_text_field( wp_unslash( $_POST['email_heading'] ) ) : '',
+			'email_body'    => isset( $_POST['email_body'] ) && is_string( $_POST['email_body'] ) ? wp_kses_post( wp_unslash( $_POST['email_body'] ) ) : '',
+			'pdf_title'     => isset( $_POST['pdf_title'] ) && is_string( $_POST['pdf_title'] ) ? sanitize_text_field( wp_unslash( $_POST['pdf_title'] ) ) : '',
+			'pdf_text'      => isset( $_POST['pdf_text'] ) && is_string( $_POST['pdf_text'] ) ? wp_kses_post( wp_unslash( $_POST['pdf_text'] ) ) : '',
 		);
 		foreach ( array( 'paid', 'show_in_account', 'reduce_stock', 'email_customer', 'email_admin', 'pdf_enabled', 'pdf_attach' ) as $flag ) {
 			$input[ $flag ] = isset( $_POST[ $flag ] );
 		}
 
 		if ( '' === $editing && '' === $input['slug'] ) {
-			$input['slug'] = $this->repository->slug_from_label( (string) $input['label'] );
+			$input['slug'] = $this->repository->slug_from_label( $input['label'] );
 		}
 		if ( '' !== $editing ) {
 			$input['slug'] = $editing;
@@ -415,8 +419,8 @@ final class StatusesTab implements TabInterface {
 		$this->authorize();
 		check_admin_referer( self::ACTION_DELETE );
 
-		$slug   = isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : '';
-		$target = isset( $_POST['target'] ) ? sanitize_key( wp_unslash( $_POST['target'] ) ) : '';
+		$slug   = isset( $_POST['status'] ) && is_string( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : '';
+		$target = isset( $_POST['target'] ) && is_string( $_POST['target'] ) ? sanitize_key( wp_unslash( $_POST['target'] ) ) : '';
 
 		$result = $this->repository->delete( $slug, $target );
 		if ( $result instanceof WP_Error ) {

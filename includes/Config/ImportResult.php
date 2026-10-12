@@ -101,18 +101,13 @@ final class ImportResult {
 	public function summary(): string {
 		$parts = array();
 
-		/* translators: 1: number of statuses, 2: list of slugs. */
-		$list = static function ( string $format, array $slugs ): string {
-			return sprintf( $format, count( $slugs ), implode( ', ', $slugs ) );
-		};
-
 		if ( array() !== $this->added ) {
 			/* translators: 1: number of statuses, 2: list of slugs. */
-			$parts[] = $list( __( 'Added %1$d: %2$s.', 'order-flow-for-woocommerce' ), $this->added );
+			$parts[] = self::list_text( __( 'Added %1$d: %2$s.', 'order-flow-for-woocommerce' ), $this->added );
 		}
 		if ( array() !== $this->updated ) {
 			/* translators: 1: number of statuses, 2: list of slugs. */
-			$parts[] = $list( __( 'Updated %1$d: %2$s.', 'order-flow-for-woocommerce' ), $this->updated );
+			$parts[] = self::list_text( __( 'Updated %1$d: %2$s.', 'order-flow-for-woocommerce' ), $this->updated );
 		}
 		if ( array() !== $this->unchanged ) {
 			/* translators: %d: number of statuses. */
@@ -120,7 +115,7 @@ final class ImportResult {
 		}
 		if ( array() !== $this->removed ) {
 			/* translators: 1: number of statuses, 2: list of slugs. */
-			$parts[] = $list( __( 'Removed %1$d: %2$s.', 'order-flow-for-woocommerce' ), $this->removed );
+			$parts[] = self::list_text( __( 'Removed %1$d: %2$s.', 'order-flow-for-woocommerce' ), $this->removed );
 		}
 		if ( array() !== $this->kept ) {
 			$kept = array();
@@ -128,7 +123,7 @@ final class ImportResult {
 				$kept[] = $slug . ' (' . $count . ')';
 			}
 			/* translators: 1: number of statuses, 2: list of slugs with order counts. */
-			$parts[] = $list( __( 'Kept %1$d because orders are still in them: %2$s.', 'order-flow-for-woocommerce' ), $kept );
+			$parts[] = self::list_text( __( 'Kept %1$d because orders are still in them: %2$s.', 'order-flow-for-woocommerce' ), $kept );
 		}
 		if ( array() !== $this->skipped ) {
 			$skipped = array();
@@ -136,7 +131,7 @@ final class ImportResult {
 				$skipped[] = $slug . ' (' . $reason . ')';
 			}
 			/* translators: 1: number of skipped entries, 2: list of entries with reasons. */
-			$parts[] = $list( __( 'Skipped %1$d: %2$s.', 'order-flow-for-woocommerce' ), $skipped );
+			$parts[] = self::list_text( __( 'Skipped %1$d: %2$s.', 'order-flow-for-woocommerce' ), $skipped );
 		}
 		/* translators: %d: number of transition rules. */
 		$parts[] = sprintf( __( 'Transition rules stored: %d.', 'order-flow-for-woocommerce' ), $this->rules_saved );
@@ -153,5 +148,15 @@ final class ImportResult {
 		}
 
 		return implode( ' ', $parts );
+	}
+
+	/**
+	 * One summary sentence: the format gets the number of entries and the joined list.
+	 *
+	 * @param string   $format Translated format with %1$d and %2$s.
+	 * @param string[] $items  Entries to list.
+	 */
+	private static function list_text( string $format, array $items ): string {
+		return sprintf( $format, count( $items ), implode( ', ', $items ) );
 	}
 }

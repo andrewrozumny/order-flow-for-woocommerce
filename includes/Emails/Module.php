@@ -21,6 +21,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * The status label in the emails always comes from the status configuration, so it is
  * never affected by the front-end label masking done by the status registrar.
+ *
+ * @phpstan-import-type Status from Repository
  */
 final class Module {
 
@@ -61,7 +63,7 @@ final class Module {
 		foreach ( $this->repository->all() as $status ) {
 			foreach ( array( 'customer', 'admin' ) as $type ) {
 				$email = new StatusEmail( $status, $type );
-				$emails[ StatusEmail::email_id( (string) $status['slug'], $type ) ] = $email;
+				$emails[ StatusEmail::email_id( $status['slug'], $type ) ] = $email;
 			}
 		}
 		return $emails;
@@ -70,19 +72,18 @@ final class Module {
 	/**
 	 * Send the emails of a status an order just entered.
 	 *
-	 * @param WC_Order $order   Order.
-	 * @param string   $to      New status slug (no prefix).
-	 * @param string   $from    Previous status slug (no prefix).
-	 * @param string   $comment Comment entered with the change.
+	 * @param mixed  $order   Order.
+	 * @param string $to      New status slug (no prefix).
+	 * @param string $from    Previous status slug (no prefix).
+	 * @param string $comment Comment entered with the change.
 	 */
-	public function send( $order, $to = '', $from = '', $comment = '' ): void {
+	public function send( $order, string $to = '', string $from = '', string $comment = '' ): void {
 		unset( $from );
 		if ( ! $order instanceof WC_Order ) {
 			return;
 		}
-		$to     = (string) $to;
 		$status = $this->repository->get( $to );
-		if ( null === $status || ( empty( $status['email_customer'] ) && empty( $status['email_admin'] ) ) ) {
+		if ( null === $status || ( ! $status['email_customer'] && ! $status['email_admin'] ) ) {
 			return;
 		}
 
@@ -95,7 +96,7 @@ final class Module {
 				// The status was created after WooCommerce built its list.
 				$email = new StatusEmail( $status, $type );
 			}
-			$email->trigger_status( $order, (string) $comment );
+			$email->trigger_status( $order, $comment );
 		}
 	}
 }

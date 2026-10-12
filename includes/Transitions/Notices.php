@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Transitions;
 
+use OrderFlowWC\Value;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -52,8 +54,8 @@ final class Notices {
 			}
 			printf(
 				'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
-				esc_attr( (string) $item['type'] ),
-				esc_html( (string) $item['message'] )
+				esc_attr( Value::string( $item['type'] ) ),
+				esc_html( Value::string( $item['message'] ) )
 			);
 		}
 	}

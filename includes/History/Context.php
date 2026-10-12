@@ -66,6 +66,6 @@ final class Context {
 		if ( null !== self::$user_id ) {
 			return self::$user_id;
 		}
-		return function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0;
+		return function_exists( 'get_current_user_id' ) ? get_current_user_id() : 0;
 	}
 }

@@ -19,6 +19,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * A document exists for every custom status with PDF enabled that the order is in now
  * or has been in (read from the `_ofwc_history` order meta).
+ *
+ * @phpstan-import-type Status from Repository
  */
 final class Documents {
 
@@ -44,7 +46,7 @@ final class Documents {
 	 * Statuses (config arrays keyed by slug, in status order) whose document is available for the order.
 	 *
 	 * @param WC_Order $order Order.
-	 * @return array<string, array<string, mixed>>
+	 * @return array<string, Status>
 	 */
 	public function available( WC_Order $order ): array {
 		$seen = array( $this->normalize( $order->get_status() ) => true );
@@ -64,9 +66,9 @@ final class Documents {
 		}
 
 		$result = array();
-		foreach ( $this->repository->all() as $slug => $status ) {
-			if ( ! empty( $status['pdf_enabled'] ) && isset( $seen[ $slug ] ) ) {
-				$result[ $slug ] = $status;
+		foreach ( $this->repository->all() as $status ) {
+			if ( $status['pdf_enabled'] && isset( $seen[ $status['slug'] ] ) ) {
+				$result[ $status['slug'] ] = $status;
 			}
 		}
 		return $result;
@@ -79,7 +81,7 @@ final class Documents {
 	 * @return string[]
 	 */
 	public function slugs( WC_Order $order ): array {
-		return array_map( 'strval', array_keys( $this->available( $order ) ) );
+		return array_column( $this->available( $order ), 'slug' );
 	}
 
 	/**

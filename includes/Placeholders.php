@@ -54,12 +54,12 @@ final class Placeholders {
 		$total = html_entity_decode( wp_strip_all_tags( $total ), ENT_QUOTES, 'UTF-8' );
 
 		$values = array(
-			'{order_number}'  => (string) $order->get_order_number(),
+			'{order_number}'  => $order->get_order_number(),
 			'{status}'        => $status_label,
 			'{customer_name}' => $name,
 			'{note}'          => $note,
-			'{order_date}'    => null === $date ? '' : (string) wc_format_datetime( $date ),
-			'{site_title}'    => wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES ),
+			'{order_date}'    => null === $date ? '' : wc_format_datetime( $date ),
+			'{site_title}'    => wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ),
 			'{order_total}'   => $total,
 		);
 

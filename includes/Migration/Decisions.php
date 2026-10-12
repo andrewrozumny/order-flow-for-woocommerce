@@ -36,7 +36,7 @@ final class Decisions {
 	 * @param array<string, int> $counts Order count per custom status slug.
 	 */
 	public static function total( array $counts ): int {
-		return (int) array_sum( array_map( 'intval', $counts ) );
+		return array_sum( $counts );
 	}
 
 	/**

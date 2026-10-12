@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<psalm
+	errorLevel="1"
+	resolveFromConfigFile="true"
+	findUnusedBaselineEntry="true"
+	findUnusedCode="false"
+	ensureOverrideAttribute="false"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns="https://getpsalm.org/schema/config"
+	xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+>
+	<projectFiles>
+		<file name="order-flow-for-woocommerce.php"/>
+		<file name="uninstall.php"/>
+		<directory name="includes"/>
+		<directory name="templates"/>
+		<ignoreFiles>
+			<directory name="vendor"/>
+		</ignoreFiles>
+	</projectFiles>
+	<stubs>
+		<file name="vendor/php-stubs/wordpress-stubs/wordpress-stubs.php" preloadClasses="true"/>
+		<file name="vendor/php-stubs/wordpress-globals/wordpress-globals.php"/>
+		<file name="vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php" preloadClasses="true"/>
+		<file name="vendor/php-stubs/woocommerce-stubs/woocommerce-packages-stubs.php" preloadClasses="true"/>
+		<file name="vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php" preloadClasses="true"/>
+		<file name="vendor/php-stubs/wp-cli-stubs/wp-cli-commands-stubs.php" preloadClasses="true"/>
+		<file name="vendor/php-stubs/wp-cli-stubs/wp-cli-i18n-stubs.php"/>
+		<file name="vendor/humanmade/psalm-plugin-wordpress/stubs/globals.php"/>
+		<file name="vendor/humanmade/psalm-plugin-wordpress/stubs/overrides.php"/>
+		<file name="tests/phpstan-bootstrap.php"/>
+		<!-- Taint sources, sinks and flows the WordPress stubs do not declare. Must load last. -->
+		<file name="tests/stubs/taint-sinks.php"/>
+	</stubs>
+	<globals>
+		<var name="wpdb" type="\wpdb"/>
+	</globals>
+	<plugins>
+		<pluginClass class="PsalmWordPress\Plugin">
+			<useDefaultStubs value="false"/>
+		</pluginClass>
+	</plugins>
+</psalm>

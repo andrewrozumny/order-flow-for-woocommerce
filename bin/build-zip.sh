@@ -20,6 +20,9 @@ cp composer.json composer.lock "$STAGE/$SLUG/"
 # composer.json ships with vendor/ (WordPress.org asks for it), the lock file does not.
 rm -f "$STAGE/$SLUG/composer.lock"
 find "$STAGE/$SLUG/vendor" -name '.git*' -prune -exec rm -rf {} + 2>/dev/null || true
+# Documentation and test configs of the libraries are not needed at runtime. Licenses and fonts stay:
+# a theme override of the PDF template may name any bundled font.
+find "$STAGE/$SLUG/vendor" \( -name '*.md' -o -name 'phpunit.xml' -o -name 'mustRead.html' \) -type f -delete
 
 ZIP="$PWD/dist/$SLUG-$VERSION.zip"
 rm -f "$ZIP"

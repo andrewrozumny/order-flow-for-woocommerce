@@ -97,7 +97,7 @@ final class Importer {
 		$incoming = isset( $data['statuses'] ) && is_array( $data['statuses'] ) ? array_values( $data['statuses'] ) : array();
 
 		foreach ( $incoming as $index => $row ) {
-			$this->import_status( $row, (int) $index, $result, $in_file );
+			$this->import_status( $row, $index, $result, $in_file );
 		}
 
 		if ( $replace ) {
@@ -152,7 +152,7 @@ final class Importer {
 			return;
 		}
 		$clean = $this->repository->sanitize( $row );
-		$slug  = (string) $clean['slug'];
+		$slug  = $clean['slug'];
 		$key   = '' === $slug ? '#' . ( $index + 1 ) : $slug;
 
 		if ( isset( $in_file[ $slug ] ) && '' !== $slug ) {
@@ -187,7 +187,7 @@ final class Importer {
 	 * @param ImportResult        $result  Result collector.
 	 */
 	private function remove_missing( array $in_file, ImportResult $result ): void {
-		foreach ( array_keys( $this->repository->all() ) as $slug ) {
+		foreach ( array_column( $this->repository->all(), 'slug' ) as $slug ) {
 			if ( isset( $in_file[ $slug ] ) ) {
 				continue;
 			}

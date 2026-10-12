@@ -5,6 +5,7 @@
 	<file>order-flow-for-woocommerce.php</file>
 	<file>uninstall.php</file>
 	<file>includes</file>
+	<file>templates</file>
 	<file>tests</file>
 
 	<exclude-pattern>*/vendor/*</exclude-pattern>
@@ -15,13 +16,17 @@
 	<arg value="sp"/>
 	<arg name="parallel" value="8"/>
 
-	<config name="testVersion" value="8.1-"/>
+	<config name="testVersion" value="8.1-8.5"/>
 	<config name="minimum_wp_version" value="6.6"/>
 
+	<!-- Full WordPress standard: Core + Extra + Docs + Security. No security sniff is excluded. -->
 	<rule ref="WordPress">
 		<!-- PSR-4 class files are named after the class on purpose. -->
 		<exclude name="WordPress.Files.FileName"/>
 	</rule>
+	<rule ref="WordPress-Extra"/>
+	<rule ref="WordPress-Docs"/>
+	<rule ref="WordPress.Security"/>
 	<rule ref="PHPCompatibilityWP"/>
 
 	<rule ref="WordPress.WP.I18n">

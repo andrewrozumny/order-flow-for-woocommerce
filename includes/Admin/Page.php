@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Admin;
 
+use OrderFlowWC\Value;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -98,8 +100,8 @@ final class Page {
 		}
 		delete_transient( $key );
 		return array(
-			'type'    => (string) $data['type'],
-			'message' => (string) $data['message'],
+			'type'    => Value::string( $data['type'] ),
+			'message' => Value::string( $data['message'] ),
 		);
 	}
 
@@ -163,15 +165,7 @@ final class Page {
 		 *
 		 * @param array<string, TabInterface> $tabs Tabs keyed by slug.
 		 */
-		$filtered = apply_filters( 'ofwc_admin_tabs', array() );
-		$given    = array();
-		if ( is_array( $filtered ) ) {
-			foreach ( $filtered as $tab ) {
-				if ( $tab instanceof TabInterface ) {
-					$given[ $tab->id() ] = $tab;
-				}
-			}
-		}
+		$given = $this->valid_tabs( apply_filters( 'ofwc_admin_tabs', array() ) );
 
 		$tabs = array();
 		foreach ( self::known_tabs() as $id => $label ) {
@@ -186,10 +180,28 @@ final class Page {
 	}
 
 	/**
+	 * Tab objects from a filter result, keyed by slug. Anything else a filter returns is dropped.
+	 *
+	 * @param mixed $filtered Filter result.
+	 * @return array<string, TabInterface>
+	 */
+	private function valid_tabs( $filtered ): array {
+		$given = array();
+		if ( is_array( $filtered ) ) {
+			foreach ( $filtered as $tab ) {
+				if ( $tab instanceof TabInterface ) {
+					$given[ $tab->id() ] = $tab;
+				}
+			}
+		}
+		return $given;
+	}
+
+	/**
 	 * Active tab slug from the request, validated against the registered tabs.
 	 */
 	public function current_tab_id(): string {
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only tab switch.
+		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only tab switch.
 		return array_key_exists( $tab, $this->tabs() ) ? $tab : 'statuses';
 	}
 

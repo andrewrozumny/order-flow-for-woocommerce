@@ -65,8 +65,8 @@ final class Download {
 	 * Check the request and stream the PDF.
 	 */
 	public function handle(): void {
-		$order_id = isset( $_GET['order_id'] ) ? absint( wp_unslash( $_GET['order_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Verified right below.
-		$slug     = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Verified right below.
+		$order_id = isset( $_GET['order_id'] ) && is_string( $_GET['order_id'] ) ? absint( wp_unslash( $_GET['order_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Verified right below.
+		$slug     = isset( $_GET['status'] ) && is_string( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Verified right below.
 
 		check_admin_referer( Documents::nonce_action( $order_id, $slug ) );
 
@@ -81,7 +81,7 @@ final class Download {
 
 		$can_manage = current_user_can( 'edit_shop_orders' ) || // phpcs:ignore WordPress.WP.Capabilities.Unknown -- WooCommerce capability.
 			current_user_can( 'manage_woocommerce' );
-		if ( ! Documents::may_download( $can_manage, $order->get_customer_id(), get_current_user_id(), ! empty( $status['show_in_account'] ) ) ) {
+		if ( ! Documents::may_download( $can_manage, $order->get_customer_id(), get_current_user_id(), $status['show_in_account'] ) ) {
 			wp_die( esc_html__( 'You are not allowed to download this document.', 'order-flow-for-woocommerce' ), '', array( 'response' => 403 ) );
 		}
 

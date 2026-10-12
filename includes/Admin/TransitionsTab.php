@@ -80,8 +80,8 @@ final class TransitionsTab implements TabInterface {
 	public function render(): void {
 		$statuses = array();
 		foreach ( wc_get_order_statuses() as $key => $label ) {
-			$slug              = 0 === strpos( (string) $key, 'wc-' ) ? substr( (string) $key, 3 ) : (string) $key;
-			$statuses[ $slug ] = (string) $label;
+			$slug              = 0 === strpos( $key, 'wc-' ) ? substr( $key, 3 ) : $key;
+			$statuses[ $slug ] = $label;
 		}
 		$roles = wp_roles()->get_names();
 
@@ -136,7 +136,7 @@ final class TransitionsTab implements TabInterface {
 	 * @param string                                                                  $index    Row index or the template placeholder.
 	 * @param array{from: string, to: string, roles: string[], require_comment: bool} $rule     Rule values.
 	 * @param array<string, string>                                                   $statuses Status slug => label.
-	 * @param array<string, string>                                                   $roles    Role key => name.
+	 * @param array<int|string, string>                                               $roles    Role key => name.
 	 */
 	private function render_row( string $index, array $rule, array $statuses, array $roles ): void {
 		$base = 'rules[' . $index . ']';
@@ -190,7 +190,7 @@ final class TransitionsTab implements TabInterface {
 		$raw = array();
 		if ( isset( $_POST['rules'] ) && is_array( $_POST['rules'] ) ) {
 			// Each value is sanitized in Rules::sanitize() against the registered statuses and roles.
-			$raw = array_values( wp_unslash( $_POST['rules'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$raw = array_values( wp_unslash( $_POST['rules'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized field by field in Rules::sanitize().
 		}
 		$this->rules->save_all( $raw );
 

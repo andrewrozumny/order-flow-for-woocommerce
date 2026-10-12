@@ -1,11 +1,10 @@
-includes:
-	- vendor/szepeviktor/phpstan-wordpress/extension.neon
-
 parameters:
-	level: 8
-	treatPhpDocTypesAsCertain: false
+	level: max
+	treatPhpDocTypesAsCertain: true
+	reportUnmatchedIgnoredErrors: true
 	paths:
 		- order-flow-for-woocommerce.php
+		- uninstall.php
 		- includes
 	bootstrapFiles:
 		- tests/phpstan-bootstrap.php
