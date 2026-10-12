@@ -101,9 +101,9 @@ final class DocumentsTab implements TabInterface {
 		echo '<tr><th scope="row">' . esc_html__( 'Logo', 'order-flow-for-woocommerce' ) . '</th><td>';
 		printf( '<input type="hidden" name="logo_id" id="ofwc-logo-id" value="%s">', esc_attr( (string) $logo_id ) );
 		printf(
-			'<p><img id="ofwc-logo-preview" src="%1$s" alt="" style="max-width:240px;max-height:90px;%2$s"></p>',
+			'<p><img id="ofwc-logo-preview" class="ofwc-logo-preview" src="%1$s" alt=""%2$s></p>',
 			esc_url( is_string( $logo_src ) ? $logo_src : '' ),
-			is_string( $logo_src ) ? '' : 'display:none;'
+			is_string( $logo_src ) ? '' : ' hidden'
 		);
 		echo '<button type="button" class="button" id="ofwc-logo-pick">' . esc_html__( 'Choose image', 'order-flow-for-woocommerce' ) . '</button> ';
 		echo '<button type="button" class="button-link" id="ofwc-logo-clear">' . esc_html__( 'Remove', 'order-flow-for-woocommerce' ) . '</button>';
@@ -125,9 +125,7 @@ final class DocumentsTab implements TabInterface {
 	 * Save the settings.
 	 */
 	public function handle_save(): void {
-		if ( ! current_user_can( Page::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'order-flow-for-woocommerce' ), '', array( 'response' => 403 ) );
-		}
+		Page::authorize();
 		check_admin_referer( self::ACTION );
 
 		$logo_id = isset( $_POST['logo_id'] ) && is_string( $_POST['logo_id'] ) ? absint( wp_unslash( $_POST['logo_id'] ) ) : 0;

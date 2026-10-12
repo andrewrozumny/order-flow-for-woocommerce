@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OrderFlowWC\Emails;
 
 use OrderFlowWC\Placeholders;
+use OrderFlowWC\Statuses\Masking;
 use OrderFlowWC\Statuses\Repository;
 use OrderFlowWC\Value;
 use WC_Email;
@@ -240,7 +241,7 @@ class StatusEmail extends WC_Email {
 	 * Send this email for an order that entered the status.
 	 *
 	 * @param WC_Order $order Order.
-	 * @param string   $note  Comment entered with the status change.
+	 * @param string   $note  Comment to show in the email; Emails\Module leaves it empty for the customer unless the person chose to send it.
 	 * @return bool Whether an email was sent.
 	 */
 	public function trigger_status( WC_Order $order, string $note = '' ): bool {
@@ -287,6 +288,8 @@ class StatusEmail extends WC_Email {
 		if ( ! $this->object instanceof WC_Order ) {
 			return $text;
 		}
-		return Placeholders::replace( $text, $this->object, $this->status['label'], $this->note, $html );
+		// The customer reads "Processing" for an internal step; the shop sees the real label.
+		$label = 'customer' === $this->recipient_type ? Masking::customer_label( $this->status ) : $this->status['label'];
+		return Placeholders::replace( $text, $this->object, $label, $this->note, $html );
 	}
 }

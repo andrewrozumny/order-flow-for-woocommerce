@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OrderFlowWC\Tests\Unit\Statuses;
 
 use Brain\Monkey\Functions;
+use OrderFlowWC\Statuses\Colors;
 use OrderFlowWC\Statuses\Registrar;
 use OrderFlowWC\Statuses\Repository;
 use OrderFlowWC\Tests\Unit\TestCase;
@@ -18,6 +19,7 @@ use OrderFlowWC\Tests\Unit\TestCase;
  * Filters and registration.
  *
  * @covers \OrderFlowWC\Statuses\Registrar
+ * @covers \OrderFlowWC\Statuses\Colors
  */
 final class RegistrarTest extends TestCase {
 
@@ -45,6 +47,9 @@ final class RegistrarTest extends TestCase {
 			)
 		);
 		Functions\when( 'is_admin' )->justReturn( true );
+		Functions\when( 'wp_doing_cron' )->justReturn( false );
+		Functions\when( 'get_current_user_id' )->justReturn( 7 );
+		Functions\when( 'current_user_can' )->justReturn( true );
 	}
 
 	/**
@@ -76,15 +81,73 @@ final class RegistrarTest extends TestCase {
 	}
 
 	/**
-	 * On the front end a status hidden from customers shows as Processing.
+	 * A status hidden from customers shows as Processing to a person who cannot work on orders, wherever the request
+	 * comes from: the shop pages, admin-ajax, the REST API or the Store API.
+	 *
+	 * @dataProvider customer_doors
+	 *
+	 * @param bool $is_admin Whether the request is a wp-admin one (admin-ajax counts as such).
 	 */
-	public function test_hidden_status_masked_on_front_end(): void {
-		Functions\when( 'is_admin' )->justReturn( false );
-		Functions\when( 'wp_doing_cron' )->justReturn( false );
+	public function test_hidden_status_masked_for_a_customer( bool $is_admin ): void {
+		Functions\when( 'is_admin' )->justReturn( $is_admin );
+		Functions\when( 'current_user_can' )->justReturn( false );
 
 		$result = ( new Registrar() )->filter_order_statuses( array( 'wc-processing' => 'Processing' ) );
 		$this->assertSame( 'Processing', $result['wc-proof'] );
 		$this->assertSame( 'Packed', $result['wc-packed'] );
+	}
+
+	/**
+	 * Requests a customer can make.
+	 *
+	 * @return array<string, array{bool}>
+	 */
+	public static function customer_doors(): array {
+		return array(
+			'shop page'                 => array( false ),
+			'admin-ajax from the front' => array( true ),
+		);
+	}
+
+	/**
+	 * A person who works on orders sees the real label, in wp-admin and in the REST API alike.
+	 */
+	public function test_hidden_status_shows_its_label_to_order_staff(): void {
+		Functions\when( 'is_admin' )->justReturn( false );
+
+		$result = ( new Registrar() )->filter_order_statuses( array( 'wc-processing' => 'Processing' ) );
+		$this->assertSame( 'Awaiting proof', $result['wc-proof'] );
+	}
+
+	/**
+	 * Cron and WP-CLI never show anything to a customer.
+	 */
+	public function test_hidden_status_shows_its_label_in_cron(): void {
+		Functions\when( 'current_user_can' )->justReturn( false );
+		Functions\when( 'wp_doing_cron' )->justReturn( true );
+
+		$result = ( new Registrar() )->filter_order_statuses( array( 'wc-processing' => 'Processing' ) );
+		$this->assertSame( 'Awaiting proof', $result['wc-proof'] );
+	}
+
+	/**
+	 * The unpaid custom status is added to the statuses Analytics leaves out; the paid one is not.
+	 */
+	public function test_unpaid_statuses_are_excluded_from_analytics(): void {
+		$registrar = new Registrar();
+
+		$this->assertSame( array( 'pending', 'packed' ), $registrar->filter_analytics_excluded_statuses( array( 'pending' ) ) );
+		$this->assertSame( array( 'packed' ), $registrar->filter_analytics_excluded_statuses( array( 'packed' ) ), 'no duplicates' );
+		$this->assertFalse( $registrar->filter_analytics_excluded_statuses( false ) );
+	}
+
+	/**
+	 * A shop that wants unpaid statuses in Analytics switches the exclusion off.
+	 */
+	public function test_analytics_exclusion_can_be_switched_off(): void {
+		\Brain\Monkey\Filters\expectApplied( 'ofwc_exclude_unpaid_from_analytics' )->once()->andReturn( false );
+
+		$this->assertSame( array( 'pending' ), ( new Registrar() )->filter_analytics_excluded_statuses( array( 'pending' ) ) );
 	}
 
 	/**
@@ -131,10 +194,10 @@ final class RegistrarTest extends TestCase {
 	 * Admin CSS gives each status its color with a readable text color.
 	 */
 	public function test_status_css(): void {
-		$css = ( new Registrar() )->status_css();
+		$css = ( new Colors( new Repository() ) )->css();
 		$this->assertStringContainsString( '.order-status.status-proof{background:#112233;color:#ffffff;}', $css );
 		$this->assertStringContainsString( '.order-status.status-packed{background:#777777;color:#ffffff;}', $css );
-		$this->assertSame( '#1d2327', Registrar::text_color( '#ffff00' ) );
+		$this->assertSame( '#1d2327', Colors::text_color( '#ffff00' ) );
 	}
 
 	/**

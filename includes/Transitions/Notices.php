@@ -16,54 +16,72 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Small per-user queue of notices for the order screens.
+ * The one notice queue of the plugin: a small per-user list kept in user meta, shown on the next admin page
+ * and then removed. User meta is read together with the other meta of the logged-in user, so an admin page
+ * without a notice costs no extra database query.
  */
 final class Notices {
+
+	public const META_KEY = 'ofwc_notices';
 
 	/**
 	 * Queue a notice for the current user's next admin page load.
 	 *
-	 * @param string $type    `success`, `warning` or `error`.
+	 * @param string $type    `success`, `info`, `warning` or `error`.
 	 * @param string $message Plain text message.
 	 */
 	public static function add( string $type, string $message ): void {
-		$key   = self::key();
-		$items = get_transient( $key );
-		$items = is_array( $items ) ? $items : array();
-
+		$user = get_current_user_id();
+		if ( $user <= 0 ) {
+			return;
+		}
+		$items   = self::read( $user );
 		$items[] = array(
-			'type'    => in_array( $type, array( 'success', 'warning', 'error' ), true ) ? $type : 'success',
+			'type'    => in_array( $type, array( 'success', 'info', 'warning', 'error' ), true ) ? $type : 'success',
 			'message' => $message,
 		);
-		set_transient( $key, $items, MINUTE_IN_SECONDS * 5 );
+		update_user_meta( $user, self::META_KEY, $items );
 	}
 
 	/**
 	 * Print and clear the queue.
 	 */
 	public static function render(): void {
-		$key   = self::key();
-		$items = get_transient( $key );
-		if ( ! is_array( $items ) || array() === $items ) {
+		$user  = get_current_user_id();
+		$items = $user > 0 ? self::read( $user ) : array();
+		if ( array() === $items ) {
 			return;
 		}
-		delete_transient( $key );
+		delete_user_meta( $user, self::META_KEY );
 		foreach ( $items as $item ) {
-			if ( ! is_array( $item ) || ! isset( $item['type'], $item['message'] ) ) {
-				continue;
-			}
 			printf(
 				'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
-				esc_attr( Value::string( $item['type'] ) ),
-				esc_html( Value::string( $item['message'] ) )
+				esc_attr( $item['type'] ),
+				esc_html( $item['message'] )
 			);
 		}
 	}
 
 	/**
-	 * Transient key of the current user.
+	 * The queued notices of a user.
+	 *
+	 * @param int $user User id.
+	 * @return array<int, array{type: string, message: string}>
 	 */
-	private static function key(): string {
-		return 'ofwc_tn_' . get_current_user_id();
+	private static function read( int $user ): array {
+		$raw   = get_user_meta( $user, self::META_KEY, true );
+		$items = array();
+		if ( ! is_array( $raw ) ) {
+			return $items;
+		}
+		foreach ( $raw as $item ) {
+			if ( is_array( $item ) && isset( $item['type'], $item['message'] ) ) {
+				$items[] = array(
+					'type'    => Value::string( $item['type'] ),
+					'message' => Value::string( $item['message'] ),
+				);
+			}
+		}
+		return $items;
 	}
 }

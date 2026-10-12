@@ -95,16 +95,44 @@ final class ModuleTest extends TestCase {
 	}
 
 	/**
-	 * A change between core statuses is recorded but not announced.
+	 * A change between core statuses is recorded in the history but not announced, and WooCommerce's own note is
+	 * not repeated by a note of ours.
 	 */
 	public function test_core_change_does_not_fire_status_entered(): void {
 		$store = array();
 		$order = $this->order( $store );
-		$order->shouldReceive( 'add_order_note' )->once()->with( 'Order Flow: Pending to Processing by Sam Manager.', 0, false );
+		$order->shouldReceive( 'add_order_note' )->never();
 
 		Actions\expectDone( 'ofwc_status_entered' )->never();
 
 		( new Module() )->record( 5, 'pending', 'processing', $order );
+
+		$this->assertCount( 1, History::get( $order ) );
+	}
+
+	/**
+	 * A comment is worth a note even on a change between core statuses.
+	 */
+	public function test_core_change_with_a_comment_is_noted(): void {
+		$store = array();
+		$order = $this->order( $store );
+		$order->shouldReceive( 'add_order_note' )->once()->with( 'Order Flow: Pending to Processing by Sam Manager. Comment: Paid by wire', 0, false );
+
+		Context::set( 'Paid by wire', 7 );
+		( new Module() )->record( 5, 'pending', 'processing', $order );
+
+		$this->assertCount( 1, History::get( $order ) );
+	}
+
+	/**
+	 * A change out of a custom status is noted too.
+	 */
+	public function test_change_out_of_a_custom_status_is_noted(): void {
+		$store = array();
+		$order = $this->order( $store );
+		$order->shouldReceive( 'add_order_note' )->once()->with( 'Order Flow: Proof to Completed by Sam Manager.', 0, false );
+
+		( new Module() )->record( 5, 'proof', 'completed', $order );
 
 		$this->assertCount( 1, History::get( $order ) );
 	}

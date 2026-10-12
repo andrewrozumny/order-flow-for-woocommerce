@@ -26,6 +26,7 @@ final class RulesTest extends TestCase {
 	 * @param array<int, array<string, mixed>> $rules Stored rules.
 	 */
 	private function with_rules( array $rules ): Rules {
+		Rules::flush_cache();
 		Functions\when( 'get_option' )->alias(
 			static function ( string $name ) use ( $rules ) {
 				if ( 'ofwc_statuses' === $name ) {

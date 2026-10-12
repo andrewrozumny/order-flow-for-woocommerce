@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Emails;
 
+use OrderFlowWC\History\Context;
 use OrderFlowWC\Statuses\Repository;
 use WC_Order;
 
@@ -19,8 +20,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Registers the status emails with WooCommerce and sends them when an order enters a custom status.
  *
- * The status label in the emails always comes from the status configuration, so it is
- * never affected by the front-end label masking done by the status registrar.
+ * The status label in the emails comes from the status configuration, not from the screen masking of the status
+ * registrar: the shop admin gets the real label and the customer gets the label a customer may see.
+ *
+ * The comment of the change goes to the shop admin always. It goes to the customer only when the person ticked
+ * "Send this comment to the customer" for that change.
  *
  * @phpstan-import-type Status from Repository
  */
@@ -96,7 +100,7 @@ final class Module {
 				// The status was created after WooCommerce built its list.
 				$email = new StatusEmail( $status, $type );
 			}
-			$email->trigger_status( $order, $comment );
+			$email->trigger_status( $order, 'customer' === $type && ! Context::notify_customer() ? '' : $comment );
 		}
 	}
 }

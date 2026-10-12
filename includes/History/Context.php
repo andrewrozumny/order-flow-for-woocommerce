@@ -34,22 +34,39 @@ final class Context {
 	private static ?int $user_id = null;
 
 	/**
+	 * Whether the person chose to send the comment to the customer.
+	 *
+	 * @var bool
+	 */
+	private static bool $notify_customer = false;
+
+	/**
 	 * Set the context.
 	 *
-	 * @param string   $comment Comment text.
-	 * @param int|null $user_id Acting user; null means the current user.
+	 * @param string   $comment         Comment text.
+	 * @param int|null $user_id         Acting user; null means the current user.
+	 * @param bool     $notify_customer Whether the comment may appear in the email to the customer.
 	 */
-	public static function set( string $comment, ?int $user_id = null ): void {
-		self::$comment = $comment;
-		self::$user_id = $user_id;
+	public static function set( string $comment, ?int $user_id = null, bool $notify_customer = false ): void {
+		self::$comment         = \OrderFlowWC\Transitions\Comment::clean( $comment );
+		self::$user_id         = $user_id;
+		self::$notify_customer = $notify_customer;
 	}
 
 	/**
 	 * Forget the context.
 	 */
 	public static function clear(): void {
-		self::$comment = '';
-		self::$user_id = null;
+		self::$comment         = '';
+		self::$user_id         = null;
+		self::$notify_customer = false;
+	}
+
+	/**
+	 * Whether the comment of the change in progress may be shown to the customer.
+	 */
+	public static function notify_customer(): bool {
+		return self::$notify_customer && '' !== self::$comment;
 	}
 
 	/**

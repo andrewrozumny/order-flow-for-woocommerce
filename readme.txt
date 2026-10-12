@@ -38,28 +38,32 @@ The plugin works with High-Performance Order Storage (HPOS) and uses only the Wo
 *Custom statuses*
 
 * Label, color and icon for every status, shown in the order list.
-* Count as paid: reports and WooCommerce treat the order as paid.
+* Count as paid: WooCommerce treats the order as paid and includes it in its reports. A status that is not paid is kept out of the revenue in WooCommerce Analytics.
 * Reduce stock when an order enters the status.
-* Show to the customer in My Account under its own name, or as "Processing" when it is an internal step.
+* Show to the customer in My Account under its own name, or as "Processing" when it is an internal step. The customer sees "Processing" on the shop pages, in the REST and Store APIs and in the emails sent to the customer. People who can edit orders see the real label. The status slug itself is not hidden in API responses.
 * Registered as real WooCommerce order statuses, so they work in filters, reports and bulk actions.
 
 *Transition rules*
 
 * A matrix of "from > to" with the roles allowed to make each move and an optional required comment.
 * Transitions between WooCommerce's own statuses are not restricted.
-* A move into or out of a custom status needs a matching rule for the user's role. Administrators can always make any change, so the rules control shop managers and other roles.
-* Rules are enforced for people working in wp-admin: the Order Flow box buttons, the status dropdown on the order screen and bulk actions. Changes made by payment gateways, the REST API, cron or WP-CLI are not blocked.
+* A move into or out of a custom status needs a matching rule for the user's role. Administrators (users with the manage_options capability) can always make any change, so the rules control shop managers and other roles.
+* Creating a new order straight into a custom status is a move too: it is checked like a move out of "new".
+* Where the rules apply: every status change a logged-in person makes in the browser. That is the Order Flow box, the status dropdown on the order screen, the bulk actions (WooCommerce's own "Change status to ..." as well as the Order Flow ones), the status buttons in the order list and in the preview window, a new order created in wp-admin, and the REST API when it is used from the browser with the login cookie. A change that is refused leaves the order in its old status and shows a notice. Buttons and bulk actions that cannot be used are not shown.
+* Where the rules do not apply: payment gateways and webhooks, cron and Action Scheduler, WP-CLI, REST requests that authenticate with an API key or an application password, and the plugin's own work (parking and restoring orders, deleting a status).
+* A full refund moves the order to Refunded whatever the rules say. The money is already back with the customer by then.
 * Bulk actions skip orders whose transition needs a comment and tell you which ones.
 
 *History*
 
-* Every status change is saved on the order: who, when, from, to and the comment.
-* Each change is also written as a private order note, and a table of the full history is shown in the Order Flow box.
+* Every status change is saved on the order: who, when, from, to and the comment. This includes the changes WooCommerce makes itself, such as a paid checkout.
+* A change that involves a custom status, or that has a comment, is also written as a private order note. WooCommerce already notes the changes between its own statuses. A table of the full history is shown in the Order Flow box.
 
 *Emails*
 
 * One WooCommerce email per custom status, to the customer, to the shop admin, or both.
 * Subject, heading and text are set per status, with placeholders: {order_number}, {status}, {customer_name}, {note}, {order_date}, {site_title}, {order_total}.
+* The comment typed with a status change is for your team. The shop admin email always gets it. The customer email gets it (in {note}) only if you tick "Send this comment to the customer" for that change. The box is off by default.
 * Emails appear under WooCommerce > Settings > Emails, so you can switch them on or off like any other email.
 * The email template can be overridden in your theme.
 
@@ -72,6 +76,7 @@ The plugin works with High-Performance Order Storage (HPOS) and uses only the Wo
 
 *Configuration*
 
+* Only administrators (the manage_options capability) can open WooCommerce > Order Flow and change the statuses, rules, documents and imports. Shop managers can work on orders within the rules. A filter hands the settings to another capability.
 * Export the whole configuration (statuses, rules and document settings) as JSON, and import it on another site, either merged into what you have or replacing it.
 * Safe deactivation: when you deactivate the plugin from the Plugins screen you choose to keep the statuses as they are, or move the orders in custom statuses to On hold. Orders in On hold go back to their status when you reactivate.
 * Large shops are fine: moves run in batches with a progress page, and in the background after reactivation.
@@ -87,7 +92,11 @@ Actions and filters:
 * `ofwc_email_attachments` (filter): the files attached to a status email. Arguments: the list of file paths, the order, the status slug.
 * `ofwc_pdf_document_data` (filter): the data passed to the PDF template, so you can add your own fields.
 * `ofwc_admin_tabs` (filter): add your own tab under WooCommerce > Order Flow.
-* `ofwc_mask_status_labels` (filter): whether customers see "Processing" instead of the label of a status that is not shown in My Account.
+* `ofwc_mask_status_labels` (filter): whether the current request shows "Processing" instead of the label of a status that is not shown to customers.
+* `ofwc_manage_capability` (filter): the capability needed to configure Order Flow. Default `manage_options`. Moving orders keeps following the rules and `edit_shop_orders`.
+* `ofwc_enforce_transition_rules` (filter): whether the rules apply to the status change being saved. Arguments: the default answer, the order.
+* `ofwc_actor_is_person` (filter): whether a request counts as a person in the browser (rules apply) or as the system (they do not).
+* `ofwc_exclude_unpaid_from_analytics` (filter): return false to let orders in unpaid custom statuses count in WooCommerce Analytics.
 * `ofwc_is_pro` (filter): returns false in the free plugin. Used to switch on add-on features.
 * `ofwc_batch_budget` (filter): seconds one request may spend on a batch of bulk order work (moving orders when you deactivate the plugin, restoring them, deleting a status). Default 18.
 
@@ -145,7 +154,15 @@ A PDF attached to an email is written to the temporary folder of your server (ou
 
 = Can I limit what shop managers can do? =
 
-Yes. In the Transitions tab you choose, for each "from > to" move, which roles may make it, and you can require a comment. Administrators can always make any change. The rules apply to people working in wp-admin. Changes made by payment gateways, the REST API, cron or WP-CLI are not blocked.
+Yes. In the Transitions tab you choose, for each "from > to" move, which roles may make it, and you can require a comment. Administrators can always make any change. The rules apply to every change a logged-in person makes in the browser: the order screen, bulk actions, the buttons in the order list, new orders and the REST API with the login cookie. They do not apply to payment gateways, webhooks, cron, WP-CLI, API keys and application passwords, and not to a full refund that moves the order to Refunded. Shop managers cannot change the statuses or the rules themselves: that needs the manage_options capability.
+
+= Does the customer see my comment? =
+
+Only if you tick "Send this comment to the customer" next to the comment, and the status sends an email to the customer. Without the tick, the comment stays in the order history and in the email to the shop admin.
+
+= Does a status that is not paid count in WooCommerce Analytics? =
+
+No. Orders in a custom status without "Count as paid" are kept out of the revenue in WooCommerce Analytics. Your own Analytics settings are not changed. If you want such orders to count, use the `ofwc_exclude_unpaid_from_analytics` filter or switch on "Count as paid".
 
 = Can I change the email texts? =
 
@@ -157,7 +174,7 @@ You can set the title, the logo, the store details and the free text per status 
 
 = Will it slow down my site? =
 
-No. Statuses and rules are small settings loaded with the rest of your options. PDF files are made only when someone downloads one or when a status email with an attachment is sent. Nothing runs on the front of the shop except showing the status name.
+No. Statuses and rules are small settings loaded with the rest of your options. PDF files are made only when someone downloads one or when a status email with an attachment is sent. On the front of the shop the plugin shows the status name. When an order changes status, for example at checkout, it also saves one small history entry on that order.
 
 = Does it work on multisite? =
 
@@ -176,8 +193,8 @@ Yes, per site and network-wide. Each site has its own statuses, rules and histor
 = 0.1.0 =
 * First release.
 * Custom order statuses with label, color, icon, paid, stock and My Account options.
-* Transition rules by role with optional required comment, enforced in wp-admin.
-* Transition history on every order, as order notes and a table in the Order Flow box.
+* Transition rules by role with optional required comment, enforced for every change a person makes in the browser.
+* Transition history on every order, as a table in the Order Flow box and as private order notes for changes that involve a custom status or carry a comment.
 * A WooCommerce email per status for the customer and the admin, with placeholders and a theme-overridable template.
 * A PDF document per status with download on the order screen and in My Account, optional email attachment and a theme-overridable template.
 * Import and export of the configuration as JSON.

@@ -50,7 +50,7 @@ final class MetaBox {
 			return;
 		}
 		$from = $order->get_status();
-		if ( in_array( $from, array( 'auto-draft', 'draft', 'new', 'checkout-draft' ), true ) ) {
+		if ( in_array( $from, Module::NEW_ORDER_STATUSES, true ) ) {
 			echo '<p class="description">' . esc_html__( 'Save the order first. Status changes and history appear here afterwards.', 'order-flow-for-woocommerce' ) . '</p>';
 			return;
 		}
@@ -98,7 +98,9 @@ final class MetaBox {
 		echo '</div>';
 
 		echo '<p class="ofwc-comment-row"><label for="ofwc_comment"><strong>' . esc_html__( 'Comment', 'order-flow-for-woocommerce' ) . '</strong> <span class="ofwc-required" hidden>' . esc_html__( '(required for this change)', 'order-flow-for-woocommerce' ) . '</span></label>';
-		echo '<textarea id="ofwc_comment" name="ofwc_comment" rows="3" class="widefat"></textarea></p>';
+		echo '<textarea id="ofwc_comment" name="' . esc_attr( Module::COMMENT_FIELD ) . '" rows="3" class="widefat"></textarea></p>';
+		echo '<p class="ofwc-notify-row"><label for="ofwc_notify_customer"><input type="checkbox" id="ofwc_notify_customer" name="' . esc_attr( Module::NOTIFY_FIELD ) . '" value="1"> ' . esc_html__( 'Send this comment to the customer', 'order-flow-for-woocommerce' ) . '</label></p>';
+		echo '<p class="description">' . esc_html__( 'The comment is saved in the order history and the shop admin email. Customers see it only when you tick the box, in the status email, if that status sends one to the customer.', 'order-flow-for-woocommerce' ) . '</p>';
 		if ( $needs_comment ) {
 			echo '<p class="description">' . esc_html__( '* This change needs a comment.', 'order-flow-for-woocommerce' ) . '</p>';
 		}

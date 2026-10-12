@@ -815,6 +815,8 @@ function ofwc_it_phase4_lifecycle(): void {
 	// phpcs:enable WordPress.DB
 }
 
+require __DIR__ . '/rules.php';
+
 try {
 	ofwc_it_phase1_statuses();
 	ofwc_it_phase2_transitions();
@@ -822,6 +824,8 @@ try {
 	ofwc_it_phase2_pdf();
 	ofwc_it_phase3_config();
 	ofwc_it_phase4_lifecycle();
+	ofwc_it_phase5_rules();
+	ofwc_it_phase6_privacy();
 } finally {
 	ofwc_it_cleanup( new Repository() );
 }

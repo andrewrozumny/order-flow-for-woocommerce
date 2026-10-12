@@ -12,9 +12,9 @@ Requires WordPress 6.6+, PHP 8.1+, WooCommerce 9.0+. Tested up to WordPress 7.1 
 
 | Area | What you get |
 | --- | --- |
-| Statuses | Label, color and icon. Count as paid, reduce stock, show to the customer in My Account under its own name or as "Processing" |
+| Statuses | Label, color and icon. Count as paid (unpaid statuses stay out of Analytics revenue), reduce stock, show to the customer under its own name or as "Processing" |
 | Transition rules | A matrix of "from > to" with the roles allowed to make each move and an optional required comment |
-| History | Who, when, from, to and comment for every change, as order notes and as a table in the Order Flow box |
+| History | Who, when, from, to and comment for every change, as a table in the Order Flow box, and as order notes for changes that involve a custom status or carry a comment |
 | Emails | One WooCommerce email per status for the customer and/or admin, with placeholders `{order_number}` `{status}` `{customer_name}` `{note}` `{order_date}` `{site_title}` `{order_total}` |
 | PDF documents | A document per status with logo, store details, items, totals and free text. Download on the order screen and in My Account, optional email attachment |
 | Configuration | Import and export as JSON (merge or replace) |
@@ -23,8 +23,11 @@ Requires WordPress 6.6+, PHP 8.1+, WooCommerce 9.0+. Tested up to WordPress 7.1 
 ### Transition policy
 
 - A move between WooCommerce's own statuses is not restricted.
-- A move into or out of a custom status needs a rule that matches the user's role. Administrators can always make any change, so rules control shop managers and other roles.
-- Rules are enforced for human actions in wp-admin: Order Flow box buttons, the status dropdown and bulk actions. Programmatic changes (payment gateways, REST API, cron, WP-CLI) are not blocked.
+- A move into or out of a custom status needs a rule that matches the user's role. Administrators (`manage_options`) can always make any change, so rules control shop managers and other roles. A new order created straight into a custom status is checked as a move out of "new".
+- **Where the rules apply:** every status change a logged-in person makes in the browser. The Order Flow box, the status dropdown, WooCommerce's own bulk actions and the Order Flow ones, the status buttons in the order list and the preview window, new orders created in wp-admin, and the REST API used with the login cookie. A refused change leaves the old status and shows a notice. Buttons and bulk actions that cannot be used are not shown.
+- **Where they do not:** payment gateways and webhooks, cron and Action Scheduler, WP-CLI, REST with an API key or an application password, and the plugin's own work (parking and restoring orders, deleting a status). A full refund that moves the order to Refunded is not refused either, because the money is already back.
+- Only administrators can open the Order Flow settings. The `ofwc_manage_capability` filter hands that to another capability.
+- The comment of a status change is for the team. The customer email gets it only when "Send this comment to the customer" is ticked.
 
 ## Privacy
 
@@ -66,7 +69,7 @@ add_action(
 );
 ```
 
-Other hooks: `ofwc_email_attachments`, `ofwc_pdf_document_data`, `ofwc_admin_tabs`, `ofwc_mask_status_labels`, `ofwc_is_pro`, `ofwc_batch_budget` (seconds one request spends on a batch of bulk order work, default 18).
+Other hooks: `ofwc_email_attachments`, `ofwc_pdf_document_data`, `ofwc_admin_tabs`, `ofwc_mask_status_labels`, `ofwc_manage_capability`, `ofwc_enforce_transition_rules`, `ofwc_actor_is_person`, `ofwc_exclude_unpaid_from_analytics`, `ofwc_is_pro`, `ofwc_batch_budget` (seconds one request spends on a batch of bulk order work, default 18).
 
 Template overrides in your theme:
 

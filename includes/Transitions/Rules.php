@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OrderFlowWC\Transitions;
 
 use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Statuses\Slug;
 use WP_User;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -25,10 +26,43 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - Users with `manage_options` may always make any transition.
  * - Otherwise a rule matching (from or "*", to) must list one of the user's roles.
  * - `require_comment` on a matching rule demands a non-empty comment, for everybody.
+ *
+ * The normalized rules, the index of rules by target status and the list of status slugs are built once
+ * per request and dropped whenever the rules or the statuses are saved (see watch()).
+ *
+ * @phpstan-type Rule array{from: string, to: string, roles: string[], require_comment: bool}
  */
 final class Rules {
 
 	public const ANY = '*';
+
+	/**
+	 * Normalized rules of this request, null until first used.
+	 *
+	 * @var array<int, Rule>|null
+	 */
+	private static ?array $cached_rules = null;
+
+	/**
+	 * The same rules grouped by target status.
+	 *
+	 * @var array<string, array<int, Rule>>|null
+	 */
+	private static ?array $by_target = null;
+
+	/**
+	 * Registered status slugs of this request.
+	 *
+	 * @var string[]|null
+	 */
+	private static ?array $cached_slugs = null;
+
+	/**
+	 * Role keys by user id.
+	 *
+	 * @var array<int, string[]>
+	 */
+	private static array $user_roles = array();
 
 	/**
 	 * Status storage.
@@ -47,11 +81,44 @@ final class Rules {
 	}
 
 	/**
+	 * Drop the per-request caches. Called when rules or statuses change.
+	 */
+	public static function flush_cache(): void {
+		self::$cached_rules = null;
+		self::$by_target    = null;
+		self::$cached_slugs = null;
+		self::$user_roles   = array();
+	}
+
+	/**
+	 * Flush the caches whenever the rules or the statuses are written, wherever the write comes from.
+	 */
+	public static function watch(): void {
+		foreach ( array( Repository::TRANSITIONS_OPTION, Repository::OPTION ) as $option ) {
+			foreach ( array( 'add_option_', 'update_option_', 'delete_option_' ) as $prefix ) {
+				add_action( $prefix . $option, array( self::class, 'flush_cache' ) );
+			}
+		}
+	}
+
+	/**
 	 * Stored rules in a normalized shape.
 	 *
-	 * @return array<int, array{from: string, to: string, roles: string[], require_comment: bool}>
+	 * @return array<int, Rule>
 	 */
 	public function all(): array {
+		if ( null === self::$cached_rules ) {
+			self::$cached_rules = $this->read();
+		}
+		return self::$cached_rules;
+	}
+
+	/**
+	 * Read and normalize the stored rules.
+	 *
+	 * @return array<int, Rule>
+	 */
+	private function read(): array {
 		$stored = get_option( Repository::TRANSITIONS_OPTION, array() );
 		$rules  = array();
 		if ( ! is_array( $stored ) ) {
@@ -79,50 +146,17 @@ final class Rules {
 	 */
 	public function save_all( array $raw ): void {
 		update_option( Repository::TRANSITIONS_OPTION, $this->sanitize( $raw ), true );
+		self::flush_cache();
 	}
 
 	/**
 	 * Clean submitted rules: statuses must exist, roles must exist, duplicates are merged.
 	 *
 	 * @param array<mixed> $raw Submitted rules.
-	 * @return array<int, array{from: string, to: string, roles: string[], require_comment: bool}>
+	 * @return array<int, Rule>
 	 */
 	public function sanitize( array $raw ): array {
-		$statuses = $this->status_slugs();
-		$roles    = array_keys( wp_roles()->get_names() );
-		$merged   = array();
-
-		foreach ( $raw as $item ) {
-			if ( ! is_array( $item ) ) {
-				continue;
-			}
-			$from = isset( $item['from'] ) && is_string( $item['from'] ) ? $this->clean_slug( $item['from'] ) : '';
-			$to   = isset( $item['to'] ) && is_string( $item['to'] ) ? $this->clean_slug( $item['to'] ) : '';
-			if ( ( self::ANY !== $from && ! in_array( $from, $statuses, true ) ) || ! in_array( $to, $statuses, true ) || $from === $to ) {
-				continue;
-			}
-			$given = isset( $item['roles'] ) && is_array( $item['roles'] ) ? $item['roles'] : array();
-			$clean = array();
-			foreach ( $given as $role ) {
-				if ( is_string( $role ) && in_array( $role, $roles, true ) ) {
-					$clean[] = $role;
-				}
-			}
-			$comment = (bool) ( $item['require_comment'] ?? false );
-			$key     = $from . '>' . $to;
-			if ( isset( $merged[ $key ] ) ) {
-				$merged[ $key ]['roles']           = array_values( array_unique( array_merge( $merged[ $key ]['roles'], $clean ) ) );
-				$merged[ $key ]['require_comment'] = $merged[ $key ]['require_comment'] || $comment;
-				continue;
-			}
-			$merged[ $key ] = array(
-				'from'            => $from,
-				'to'              => $to,
-				'roles'           => array_values( array_unique( $clean ) ),
-				'require_comment' => $comment,
-			);
-		}
-		return array_values( $merged );
+		return ( new RuleSanitizer() )->sanitize( $raw, $this->status_slugs(), array_keys( wp_roles()->get_names() ) );
 	}
 
 	/**
@@ -206,12 +240,19 @@ final class Rules {
 	 *
 	 * @param string $from Current status slug.
 	 * @param string $to   Target status slug.
-	 * @return array<int, array{from: string, to: string, roles: string[], require_comment: bool}>
+	 * @return array<int, Rule>
 	 */
 	private function matching( string $from, string $to ): array {
+		if ( null === self::$by_target ) {
+			$index = array();
+			foreach ( $this->all() as $rule ) {
+				$index[ $rule['to'] ][] = $rule;
+			}
+			self::$by_target = $index;
+		}
 		$found = array();
-		foreach ( $this->all() as $rule ) {
-			if ( $rule['to'] === $to && ( self::ANY === $rule['from'] || $rule['from'] === $from ) ) {
+		foreach ( self::$by_target[ $to ] ?? array() as $rule ) {
+			if ( self::ANY === $rule['from'] || $rule['from'] === $from ) {
 				$found[] = $rule;
 			}
 		}
@@ -239,7 +280,15 @@ final class Rules {
 		if ( ! is_object( $object ) ) {
 			return array();
 		}
-		return array_values( array_filter( $object->roles, 'is_string' ) );
+		$id = is_int( $user ) ? $user : $user->ID;
+		if ( $id > 0 && isset( self::$user_roles[ $id ] ) ) {
+			return self::$user_roles[ $id ];
+		}
+		$roles = array_values( array_filter( $object->roles, 'is_string' ) );
+		if ( $id > 0 ) {
+			self::$user_roles[ $id ] = $roles;
+		}
+		return $roles;
 	}
 
 	/**
@@ -248,23 +297,13 @@ final class Rules {
 	 * @return string[]
 	 */
 	private function status_slugs(): array {
-		$slugs = array();
-		foreach ( array_keys( wc_get_order_statuses() ) as $key ) {
-			$slugs[] = 0 === strpos( $key, 'wc-' ) ? substr( $key, 3 ) : $key;
+		if ( null === self::$cached_slugs ) {
+			$slugs = array();
+			foreach ( array_keys( wc_get_order_statuses() ) as $key ) {
+				$slugs[] = Slug::strip( $key );
+			}
+			self::$cached_slugs = $slugs;
 		}
-		return $slugs;
-	}
-
-	/**
-	 * Lowercase slug without the `wc-` prefix.
-	 *
-	 * @param string $slug Raw slug.
-	 */
-	private function clean_slug( string $slug ): string {
-		if ( self::ANY === trim( $slug ) ) {
-			return self::ANY;
-		}
-		$slug = sanitize_key( $slug );
-		return 0 === strpos( $slug, 'wc-' ) ? substr( $slug, 3 ) : $slug;
+		return self::$cached_slugs;
 	}
 }

@@ -11,6 +11,8 @@ namespace OrderFlowWC\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Transitions\Guard;
+use OrderFlowWC\Transitions\Rules;
 use Yoast\WPTestUtils\BrainMonkey\TestCase as BrainMonkeyTestCase;
 
 /**
@@ -33,5 +35,7 @@ abstract class TestCase extends BrainMonkeyTestCase {
 			}
 		);
 		Repository::flush_cache();
+		Rules::flush_cache();
+		Guard::reset();
 	}
 }

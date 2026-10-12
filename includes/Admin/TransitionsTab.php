@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Admin;
 
+use OrderFlowWC\Statuses\Slug;
 use OrderFlowWC\Transitions\Rules;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -16,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Edits the transition rules. Writes go through admin-post.php with a nonce and manage_woocommerce.
+ * Edits the transition rules. Writes go through admin-post.php with a nonce and the Order Flow configuration capability (see Page::capability()).
  */
 final class TransitionsTab implements TabInterface {
 
@@ -80,8 +81,7 @@ final class TransitionsTab implements TabInterface {
 	public function render(): void {
 		$statuses = array();
 		foreach ( wc_get_order_statuses() as $key => $label ) {
-			$slug              = 0 === strpos( $key, 'wc-' ) ? substr( $key, 3 ) : $key;
-			$statuses[ $slug ] = $label;
+			$statuses[ Slug::strip( $key ) ] = $label;
 		}
 		$roles = wp_roles()->get_names();
 
@@ -91,8 +91,9 @@ final class TransitionsTab implements TabInterface {
 		echo '<li>' . esc_html__( 'Changes between two WooCommerce statuses are never restricted.', 'order-flow-for-woocommerce' ) . '</li>';
 		echo '<li>' . esc_html__( 'A change into or out of a custom status needs a matching rule that lists one of the user\'s roles.', 'order-flow-for-woocommerce' ) . '</li>';
 		echo '<li>' . esc_html__( 'Administrators can always make any change.', 'order-flow-for-woocommerce' ) . '</li>';
-		echo '<li>' . esc_html__( 'Rules apply to people working in wp-admin (order screen, bulk actions, Order Flow buttons). Gateways, the REST API, cron and WP-CLI are not blocked.', 'order-flow-for-woocommerce' ) . '</li>';
-		echo '<li>' . esc_html__( '"Require comment" asks for a note with the change. Bulk actions skip such orders.', 'order-flow-for-woocommerce' ) . '</li>';
+		echo '<li>' . esc_html__( 'Rules apply to every status change a person makes in the browser: the order screen, bulk actions, the buttons in the order list, new orders and the REST API with the login cookie.', 'order-flow-for-woocommerce' ) . '</li>';
+		echo '<li>' . esc_html__( 'Rules do not apply to payment gateways, webhooks, cron, WP-CLI, API keys and application passwords, or to a full refund that moves an order to Refunded.', 'order-flow-for-woocommerce' ) . '</li>';
+		echo '<li>' . esc_html__( '"Require comment" asks for a note with the change. Bulk actions and the buttons in the order list cannot make such a change.', 'order-flow-for-woocommerce' ) . '</li>';
 		echo '</ul></div>';
 
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="ofwc-form ofwc-rules-form">';
@@ -182,9 +183,7 @@ final class TransitionsTab implements TabInterface {
 	 * Save the submitted rules.
 	 */
 	public function handle_save(): void {
-		if ( ! current_user_can( Page::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'order-flow-for-woocommerce' ), '', array( 'response' => 403 ) );
-		}
+		Page::authorize();
 		check_admin_referer( self::ACTION_SAVE );
 
 		$raw = array();

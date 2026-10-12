@@ -88,6 +88,9 @@
 				ofwc_to: $btn.attr( 'data-to' ),
 				ofwc_comment: $comment.val()
 			};
+			if ( $box.find( '#ofwc_notify_customer' ).is( ':checked' ) ) {
+				fields.ofwc_notify_customer = '1';
+			}
 			$.each( fields, function ( name, value ) {
 				$( '<input type="hidden">' ).attr( 'name', name ).val( value ).appendTo( $form );
 			} );

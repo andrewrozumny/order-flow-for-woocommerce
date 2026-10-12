@@ -30,7 +30,7 @@ final class Placeholders {
 			'{order_number}'  => __( 'Order number', 'order-flow-for-woocommerce' ),
 			'{status}'        => __( 'Status label', 'order-flow-for-woocommerce' ),
 			'{customer_name}' => __( 'Customer billing name', 'order-flow-for-woocommerce' ),
-			'{note}'          => __( 'Comment entered with the status change', 'order-flow-for-woocommerce' ),
+			'{note}'          => __( 'Comment entered with the status change (empty in the customer email unless sent to the customer)', 'order-flow-for-woocommerce' ),
 			'{order_date}'    => __( 'Date the order was placed', 'order-flow-for-woocommerce' ),
 			'{site_title}'    => __( 'Site title', 'order-flow-for-woocommerce' ),
 			'{order_total}'   => __( 'Order total', 'order-flow-for-woocommerce' ),

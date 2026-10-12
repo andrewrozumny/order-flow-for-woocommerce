@@ -18,11 +18,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * - Each status becomes the post status `wc-{slug}` and shows up in wc_get_order_statuses(),
  *   right after "Processing", ordered by position.
- * - Paid statuses join the "is paid" list and the reports statuses.
+ * - Paid statuses join the "is paid" list and the legacy reports statuses. Statuses that are not paid are added
+ *   to the statuses WooCommerce Analytics excludes, so unpaid orders stay out of the revenue figures.
  * - Statuses flagged "reduce stock" call wc_maybe_reduce_stock_levels() when an order enters them.
- * - Front end only (not wp-admin, cron, WP-CLI or REST): a status with "show to customer" off
- *   is displayed as "Processing", so customers never see internal steps. The filter
- *   `ofwc_mask_status_labels` can switch that off for a given request.
+ * - A status with "show to customer" off is displayed as "Processing" to anyone who cannot work on orders
+ *   (customers and visitors, on the shop front, in the REST and Store APIs, and in emails to the customer). People
+ *   who can edit orders, cron and WP-CLI see the real label. The filter `ofwc_mask_status_labels` can switch the
+ *   masking on or off for a given request.
  */
 final class Registrar {
 
@@ -32,6 +34,13 @@ final class Registrar {
 	 * @var Repository
 	 */
 	private Repository $repository;
+
+	/**
+	 * Whether a user works on orders, by user id.
+	 *
+	 * @var array<int, bool>
+	 */
+	private array $staff = array();
 
 	/**
 	 * Constructor.
@@ -49,9 +58,10 @@ final class Registrar {
 		add_action( 'init', array( $this, 'register_post_statuses' ) );
 		add_filter( 'wc_order_statuses', array( $this, 'filter_order_statuses' ) );
 		add_filter( 'woocommerce_reports_order_statuses', array( $this, 'filter_reports_statuses' ) );
+		add_filter( 'woocommerce_analytics_excluded_order_statuses', array( $this, 'filter_analytics_excluded_statuses' ) );
 		add_filter( 'woocommerce_order_is_paid_statuses', array( $this, 'filter_paid_statuses' ) );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'maybe_reduce_stock' ), 10, 3 );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_status_colors' ), 20 );
+		( new Colors( $this->repository ) )->register();
 	}
 
 	/**
@@ -64,7 +74,7 @@ final class Registrar {
 			$count = str_replace( '%', '%%', $label ) . ' <span class="count">(%s)</span>';
 
 			register_post_status(
-				'wc-' . $slug,
+				Slug::prefixed( $slug ),
 				array(
 					'label'                     => $label,
 					'public'                    => false,
@@ -102,12 +112,12 @@ final class Registrar {
 		$mask  = $this->mask_labels();
 		$added = array();
 		foreach ( $custom as $slug => $status ) {
-			$hide                   = $mask && ! $status['show_in_account'];
-			$fallback               = isset( $statuses['wc-processing'] ) ? $statuses['wc-processing'] : $status['label'];
-			$added[ 'wc-' . $slug ] = $hide ? $fallback : $status['label'];
+			$hide                             = $mask && Masking::is_hidden( $status );
+			$fallback                         = $statuses[ Slug::prefixed( Masking::STAND_IN ) ] ?? $status['label'];
+			$added[ Slug::prefixed( $slug ) ] = $hide && is_string( $fallback ) ? $fallback : $status['label'];
 		}
 
-		if ( ! array_key_exists( 'wc-processing', $statuses ) ) {
+		if ( ! array_key_exists( Slug::prefixed( Masking::STAND_IN ), $statuses ) ) {
 			return array_merge( $statuses, $added );
 		}
 
@@ -117,7 +127,7 @@ final class Registrar {
 				continue;
 			}
 			$result[ $key ] = $label;
-			if ( 'wc-processing' === $key ) {
+			if ( Slug::prefixed( Masking::STAND_IN ) === $key ) {
 				$result = array_merge( $result, $added );
 			}
 		}
@@ -135,6 +145,30 @@ final class Registrar {
 			return $statuses;
 		}
 		return $this->with_paid_slugs( $statuses );
+	}
+
+	/**
+	 * Keep orders in unpaid custom statuses out of WooCommerce Analytics.
+	 *
+	 * Analytics counts every status except the excluded ones (WooCommerce > Settings > Analytics), so a custom
+	 * status that is not paid would otherwise add its orders to the revenue. The setting of the shop owner is read,
+	 * never changed: this only adds to the list for the report query. The filter `ofwc_exclude_unpaid_from_analytics`
+	 * switches it off.
+	 *
+	 * @param mixed $statuses Excluded status slugs without prefix.
+	 * @return mixed
+	 */
+	public function filter_analytics_excluded_statuses( $statuses ) {
+		if ( ! is_array( $statuses ) || ! (bool) apply_filters( 'ofwc_exclude_unpaid_from_analytics', true ) ) {
+			return $statuses;
+		}
+		$unpaid = array();
+		foreach ( $this->repository->all() as $status ) {
+			if ( ! $status['paid'] ) {
+				$unpaid[] = $status['slug'];
+			}
+		}
+		return array_values( array_unique( array_merge( array_filter( $statuses, 'is_scalar' ), $unpaid ) ) );
 	}
 
 	/**
@@ -166,54 +200,6 @@ final class Registrar {
 	}
 
 	/**
-	 * Color the custom statuses in the admin order list.
-	 */
-	public function enqueue_status_colors(): void {
-		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
-		if ( null === $screen || ! in_array( $screen->id, array( 'woocommerce_page_wc-orders', 'edit-shop_order' ), true ) ) {
-			return;
-		}
-		$css = $this->status_css();
-		if ( '' !== $css ) {
-			wp_add_inline_style( 'woocommerce_admin_styles', $css );
-		}
-	}
-
-	/**
-	 * CSS for the admin order status pills.
-	 */
-	public function status_css(): string {
-		$css = '';
-		foreach ( $this->repository->all() as $slug => $status ) {
-			$color = $status['color'];
-			$css  .= sprintf(
-				'.order-status.status-%1$s{background:%2$s;color:%3$s;}',
-				$slug,
-				$color,
-				self::text_color( $color )
-			);
-		}
-		return $css;
-	}
-
-	/**
-	 * Readable text color (dark or white) for a background.
-	 *
-	 * @param string $hex Background as #rrggbb.
-	 */
-	public static function text_color( string $hex ): string {
-		$hex = ltrim( $hex, '#' );
-		if ( 1 !== preg_match( '/^[0-9a-f]{6}$/i', $hex ) ) {
-			return '#1d2327';
-		}
-		$red       = (int) hexdec( substr( $hex, 0, 2 ) );
-		$green     = (int) hexdec( substr( $hex, 2, 2 ) );
-		$blue      = (int) hexdec( substr( $hex, 4, 2 ) );
-		$luminance = ( 0.299 * $red + 0.587 * $green + 0.114 * $blue ) / 255;
-		return $luminance > 0.6 ? '#1d2327' : '#ffffff';
-	}
-
-	/**
 	 * Slugs of the statuses where a boolean flag is on.
 	 *
 	 * @param 'paid'|'reduce_stock' $flag Field key.
@@ -240,13 +226,27 @@ final class Registrar {
 	}
 
 	/**
-	 * Whether the current request is a customer-facing one where hidden statuses are masked.
+	 * Whether the labels of hidden statuses are masked for the person looking at them.
+	 *
+	 * Masked for everyone who cannot work on orders: customers and visitors, whichever door they use (shop pages,
+	 * admin-ajax, REST, Store API). Not masked for cron and WP-CLI, which show nothing to a customer.
 	 */
 	private function mask_labels(): bool {
-		$front = ! is_admin()
-			&& ! ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() )
-			&& ! ( defined( 'WP_CLI' ) && WP_CLI )
-			&& ! ( defined( 'REST_REQUEST' ) && REST_REQUEST );
-		return (bool) apply_filters( 'ofwc_mask_status_labels', $front );
+		$system = ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) || ( defined( 'WP_CLI' ) && WP_CLI );
+		return (bool) apply_filters( 'ofwc_mask_status_labels', ! $system && ! $this->can_see_real_labels() );
+	}
+
+	/**
+	 * Whether the current user works on orders. Looked up once per user and request.
+	 */
+	private function can_see_real_labels(): bool {
+		if ( ! function_exists( 'current_user_can' ) || ! function_exists( 'get_current_user_id' ) ) {
+			return false;
+		}
+		$user = get_current_user_id();
+		if ( ! isset( $this->staff[ $user ] ) ) {
+			$this->staff[ $user ] = $user > 0 && current_user_can( 'edit_shop_orders' ); // phpcs:ignore WordPress.WP.Capabilities.Unknown -- WooCommerce capability.
+		}
+		return $this->staff[ $user ];
 	}
 }

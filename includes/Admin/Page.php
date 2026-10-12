@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Admin;
 
+use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Transitions\Notices;
 use OrderFlowWC\Value;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -24,8 +26,36 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class Page {
 
-	public const SLUG       = 'ofwc';
-	public const CAPABILITY = 'manage_woocommerce';
+	public const SLUG               = 'ofwc';
+	public const DEFAULT_CAPABILITY = 'manage_options';
+
+	/**
+	 * The capability that opens the Order Flow configuration: statuses, transition rules, documents,
+	 * import and export, deleting a status.
+	 *
+	 * Shop managers hold `manage_woocommerce`, and they are the people the transition rules limit, so the
+	 * configuration needs `manage_options` by default.
+	 */
+	public static function capability(): string {
+		/**
+		 * Filters the capability required to configure Order Flow.
+		 *
+		 * Transitions on orders still follow the rules and the `edit_shop_orders` capability.
+		 *
+		 * @param string $capability Capability, `manage_options` by default.
+		 */
+		$capability = Value::string( apply_filters( 'ofwc_manage_capability', self::DEFAULT_CAPABILITY ) );
+		return '' === $capability ? self::DEFAULT_CAPABILITY : $capability;
+	}
+
+	/**
+	 * Stop a request from a user who may not configure Order Flow. Call it first in every admin-post handler.
+	 */
+	public static function authorize(): void {
+		if ( ! current_user_can( self::capability() ) ) {
+			wp_die( esc_html__( 'You do not have permission to do this.', 'order-flow-for-woocommerce' ), '', array( 'response' => 403 ) );
+		}
+	}
 
 	/**
 	 * Known tabs in display order, with the label used for the placeholder.
@@ -71,38 +101,13 @@ final class Page {
 	}
 
 	/**
-	 * Remember a notice for the next page load of the current user.
+	 * Remember a notice for the next page load of the current user. Shown by the plugin's one notice queue.
 	 *
 	 * @param string $type    `success` or `error`.
 	 * @param string $message Message text (plain).
 	 */
 	public static function flash( string $type, string $message ): void {
-		set_transient(
-			'ofwc_notice_' . get_current_user_id(),
-			array(
-				'type'    => 'error' === $type ? 'error' : 'success',
-				'message' => $message,
-			),
-			MINUTE_IN_SECONDS * 5
-		);
-	}
-
-	/**
-	 * Read and clear the pending notice.
-	 *
-	 * @return array{type: string, message: string}|null
-	 */
-	public static function take_flash(): ?array {
-		$key  = 'ofwc_notice_' . get_current_user_id();
-		$data = get_transient( $key );
-		if ( ! is_array( $data ) || ! isset( $data['type'], $data['message'] ) ) {
-			return null;
-		}
-		delete_transient( $key );
-		return array(
-			'type'    => Value::string( $data['type'] ),
-			'message' => Value::string( $data['message'] ),
-		);
+		Notices::add( 'error' === $type ? 'error' : 'success', $message );
 	}
 
 	/**
@@ -124,7 +129,7 @@ final class Page {
 			'woocommerce',
 			__( 'Order Flow', 'order-flow-for-woocommerce' ),
 			__( 'Order Flow', 'order-flow-for-woocommerce' ),
-			self::CAPABILITY,
+			self::capability(),
 			self::SLUG,
 			array( $this, 'render' )
 		);
@@ -145,6 +150,7 @@ final class Page {
 		wp_enqueue_style( 'wp-color-picker' );
 		wp_enqueue_style( 'ofwc-admin', OFWC_URL . 'resources/admin.css', array( 'dashicons' ), OFWC_VERSION );
 		wp_enqueue_script( 'ofwc-admin', OFWC_URL . 'resources/admin.js', array( 'jquery', 'wp-color-picker' ), OFWC_VERSION, true );
+		wp_add_inline_style( 'ofwc-admin', self::swatch_css() );
 
 		/**
 		 * Lets a tab enqueue its own assets on the Order Flow page.
@@ -152,6 +158,28 @@ final class Page {
 		 * @param string $tab Active tab slug.
 		 */
 		do_action( 'ofwc_admin_enqueue', $this->current_tab_id() );
+	}
+
+	/**
+	 * CSS class that gives a status swatch its color.
+	 *
+	 * @param string $slug Status slug.
+	 */
+	public static function swatch_class( string $slug ): string {
+		return 'ofwc-swatch-' . sanitize_html_class( $slug );
+	}
+
+	/**
+	 * One rule per status color, so the status list needs no inline style attributes.
+	 */
+	private static function swatch_css(): string {
+		$css = '';
+		foreach ( ( new Repository() )->all() as $slug => $status ) {
+			if ( 1 === preg_match( '/^#[0-9a-f]{3,8}$/i', $status['color'] ) ) {
+				$css .= sprintf( '.ofwc-wrap .%1$s{background:%2$s;}', self::swatch_class( $slug ), $status['color'] );
+			}
+		}
+		return $css;
 	}
 
 	/**
@@ -209,7 +237,7 @@ final class Page {
 	 * Render the page.
 	 */
 	public function render(): void {
-		if ( ! current_user_can( self::CAPABILITY ) ) {
+		if ( ! current_user_can( self::capability() ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'order-flow-for-woocommerce' ), '', array( 'response' => 403 ) );
 		}
 
@@ -219,8 +247,6 @@ final class Page {
 		echo '<div class="wrap ofwc-wrap">';
 		echo '<h1 class="wp-heading-inline">' . esc_html__( 'Order Flow', 'order-flow-for-woocommerce' ) . '</h1>';
 		echo '<hr class="wp-header-end">';
-
-		$this->render_notice();
 
 		echo '<nav class="nav-tab-wrapper ofwc-tabs" aria-label="' . esc_attr__( 'Order Flow sections', 'order-flow-for-woocommerce' ) . '">';
 		foreach ( $tabs as $id => $tab ) {
@@ -237,20 +263,5 @@ final class Page {
 		echo '<div class="ofwc-tab-content">';
 		$tabs[ $current ]->render();
 		echo '</div></div>';
-	}
-
-	/**
-	 * Print the pending flash notice, if any.
-	 */
-	private function render_notice(): void {
-		$notice = self::take_flash();
-		if ( null === $notice ) {
-			return;
-		}
-		printf(
-			'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
-			esc_attr( $notice['type'] ),
-			esc_html( $notice['message'] )
-		);
 	}
 }

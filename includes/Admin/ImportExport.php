@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Moves the configuration (statuses, transition rules, store details) between sites.
- * Both actions go through admin-post.php with a nonce and the manage_woocommerce capability.
+ * Both actions go through admin-post.php with a nonce and the Order Flow configuration capability (see Page::capability()).
  */
 final class ImportExport implements TabInterface {
 
@@ -151,9 +151,7 @@ final class ImportExport implements TabInterface {
 	 * @param string $action Nonce action.
 	 */
 	private function authorize( string $action ): void {
-		if ( ! current_user_can( Page::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'order-flow-for-woocommerce' ), '', array( 'response' => 403 ) );
-		}
+		Page::authorize();
 		check_admin_referer( $action, '_ofwc_nonce' );
 	}
 

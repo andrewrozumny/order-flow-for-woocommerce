@@ -17,8 +17,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Records every status change in the order meta and as a private order note, then announces
- * entries into custom statuses with the `ofwc_status_entered` action for emails and documents.
+ * Records every status change in the order meta (the history is a product feature, and PDF documents read it),
+ * and as a private order note when the change involves a custom status or carries a comment. WooCommerce already
+ * notes a change between its own statuses. Entries into custom statuses are announced with the `ofwc_status_entered`
+ * action for emails and documents.
  */
 final class Module {
 
@@ -77,9 +79,12 @@ final class Module {
 			$user_id = Context::user_id();
 			History::append( $order, $from, $to, $user_id, $comment );
 
-			$order->add_order_note( $this->note_text( $from, $to, $user_id, $comment ), 0, false );
+			$custom_to = null !== $this->repository->get( $to );
+			if ( $custom_to || '' !== $comment || null !== $this->repository->get( $from ) ) {
+				$order->add_order_note( $this->note_text( $from, $to, $user_id, $comment ), 0, false );
+			}
 
-			if ( null !== $this->repository->get( $to ) ) {
+			if ( $custom_to ) {
 				/**
 				 * Fires after an order entered a custom Order Flow status and the change was recorded.
 				 *

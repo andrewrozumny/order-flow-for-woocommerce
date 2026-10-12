@@ -13,6 +13,7 @@ use Brain\Monkey\Functions;
 use Mockery;
 use OrderFlowWC\Emails\Module;
 use OrderFlowWC\Emails\StatusEmail;
+use OrderFlowWC\History\Context;
 use OrderFlowWC\Statuses\Repository;
 use OrderFlowWC\Tests\Unit\TestCase;
 
@@ -72,15 +73,17 @@ final class ModuleTest extends TestCase {
 	}
 
 	/**
-	 * The matching customer and admin emails are triggered with the comment.
+	 * Mailer double that hands out a customer and an admin email, each expecting one note.
+	 *
+	 * @param \WC_Order $order         Order.
+	 * @param string    $customer_note Note the customer email must get.
+	 * @param string    $admin_note    Note the admin email must get.
 	 */
-	public function test_send_triggers_matching_emails(): void {
-		$order = Mockery::mock( 'WC_Order' );
-
+	private function expect_emails( $order, string $customer_note, string $admin_note ): void {
 		$customer = Mockery::mock( StatusEmail::class );
-		$customer->shouldReceive( 'trigger_status' )->once()->with( $order, 'Looks good' );
+		$customer->shouldReceive( 'trigger_status' )->once()->with( $order, $customer_note );
 		$admin = Mockery::mock( StatusEmail::class );
-		$admin->shouldReceive( 'trigger_status' )->once()->with( $order, 'Looks good' );
+		$admin->shouldReceive( 'trigger_status' )->once()->with( $order, $admin_note );
 
 		$mailer = Mockery::mock();
 		$mailer->shouldReceive( 'get_emails' )->once()->andReturn(
@@ -93,8 +96,41 @@ final class ModuleTest extends TestCase {
 		$wc = Mockery::mock();
 		$wc->shouldReceive( 'mailer' )->once()->andReturn( $mailer );
 		Functions\when( 'WC' )->justReturn( $wc );
+	}
+
+	/**
+	 * The shop admin gets the comment, the customer does not unless the person chose to send it.
+	 */
+	public function test_comment_goes_to_the_admin_only_by_default(): void {
+		Context::clear();
+		$order = Mockery::mock( 'WC_Order' );
+		$this->expect_emails( $order, '', 'INTERNAL: credit check failed' );
+
+		( new Module( $this->repo() ) )->send( $order, 'packed', 'processing', 'INTERNAL: credit check failed' );
+	}
+
+	/**
+	 * With "Send this comment to the customer" ticked both emails carry the comment.
+	 */
+	public function test_comment_goes_to_the_customer_when_chosen(): void {
+		Context::set( 'Looks good', 7, true );
+		$order = Mockery::mock( 'WC_Order' );
+		$this->expect_emails( $order, 'Looks good', 'Looks good' );
 
 		( new Module( $this->repo() ) )->send( $order, 'packed', 'processing', 'Looks good' );
+		Context::clear();
+	}
+
+	/**
+	 * The tick does nothing without a comment.
+	 */
+	public function test_tick_without_a_comment_sends_nothing(): void {
+		Context::set( '', 7, true );
+		$order = Mockery::mock( 'WC_Order' );
+		$this->expect_emails( $order, '', '' );
+
+		( new Module( $this->repo() ) )->send( $order, 'packed', 'processing', '' );
+		Context::clear();
 	}
 
 	/**

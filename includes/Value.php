@@ -29,6 +29,15 @@ final class Value {
 	}
 
 	/**
+	 * Strict boolean: only a real true counts. Hook results can be anything.
+	 *
+	 * @param mixed $value Value.
+	 */
+	public static function bool( $value ): bool {
+		return true === $value;
+	}
+
+	/**
 	 * Numeric value to int, anything else to the fallback.
 	 *
 	 * @param mixed $value    Value.

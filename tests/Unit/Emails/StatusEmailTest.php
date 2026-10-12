@@ -122,6 +122,33 @@ final class StatusEmailTest extends TestCase {
 	}
 
 	/**
+	 * An internal step shows its real label to the shop and "Processing" to the customer.
+	 */
+	public function test_hidden_status_label_is_masked_for_the_customer_only(): void {
+		Functions\when( 'wc_get_order_status_name' )->justReturn( 'Processing' );
+		$hidden = $this->status( array( 'show_in_account' => false ) );
+
+		$customer = new StatusEmail( $hidden, 'customer' );
+		$customer->set_object( $this->order() );
+		$admin = new StatusEmail( array_merge( $hidden, array( 'email_admin' => true ) ), 'admin' );
+		$admin->set_object( $this->order() );
+
+		$this->assertSame( 'Order 1042 is Processing', $customer->get_subject() );
+		$this->assertSame( 'Order 1042 is Packed', $admin->get_subject() );
+	}
+
+	/**
+	 * A status that is shown to customers keeps its label for them.
+	 */
+	public function test_visible_status_label_is_not_masked(): void {
+		Functions\when( 'wc_get_order_status_name' )->justReturn( 'Processing' );
+		$customer = new StatusEmail( $this->status( array( 'show_in_account' => true ) ), 'customer' );
+		$customer->set_object( $this->order() );
+
+		$this->assertSame( 'Order 1042 is Packed', $customer->get_subject() );
+	}
+
+	/**
 	 * Both the WooCommerce switch and the status flag must be on.
 	 */
 	public function test_is_enabled_respects_flags(): void {

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OrderFlowWC\Transitions;
 
 use OrderFlowWC\History\Context;
+use OrderFlowWC\Statuses\Slug;
 use WC_Order;
 use WP_Error;
 
@@ -45,12 +46,13 @@ final class Service {
 	 * @param string   $to      Target status slug, with or without the `wc-` prefix.
 	 * @param string   $comment Comment, required by some transitions.
 	 * @param int|null $user_id Acting user; null means the current user.
+	 * @param bool     $notify  Whether the comment may appear in the email to the customer.
 	 * @return true|WP_Error
 	 */
-	public function transition( WC_Order $order, string $to, string $comment = '', ?int $user_id = null ) {
-		$to      = 0 === strpos( $to, 'wc-' ) ? substr( $to, 3 ) : $to;
+	public function transition( WC_Order $order, string $to, string $comment = '', ?int $user_id = null, bool $notify = false ) {
+		$to      = Slug::strip( $to );
 		$user_id = $user_id ?? get_current_user_id();
-		$comment = trim( $comment );
+		$comment = Comment::clean( $comment );
 		$from    = $order->get_status();
 
 		$error = $this->check( $from, $to, $comment, $user_id );
@@ -58,7 +60,7 @@ final class Service {
 			return $error;
 		}
 
-		Context::set( $comment, $user_id );
+		Context::set( $comment, $user_id, $notify );
 		try {
 			$order->update_status( $to );
 		} finally {
@@ -76,7 +78,7 @@ final class Service {
 	 * @param int    $user_id Acting user.
 	 */
 	public function check( string $from, string $to, string $comment, int $user_id ): ?WP_Error {
-		if ( ! array_key_exists( 'wc-' . $to, wc_get_order_statuses() ) ) {
+		if ( ! array_key_exists( Slug::prefixed( $to ), wc_get_order_statuses() ) ) {
 			return new WP_Error( 'ofwc_unknown_status', __( 'The target status does not exist.', 'order-flow-for-woocommerce' ) );
 		}
 		if ( $from === $to ) {
@@ -85,7 +87,7 @@ final class Service {
 		if ( ! $this->rules->is_allowed( $from, $to, $user_id ) ) {
 			return new WP_Error( 'ofwc_not_allowed', __( 'You are not allowed to make this status change.', 'order-flow-for-woocommerce' ) );
 		}
-		if ( '' === trim( $comment ) && $this->rules->requires_comment( $from, $to ) ) {
+		if ( Comment::is_blank( $comment ) && $this->rules->requires_comment( $from, $to ) ) {
 			return new WP_Error( 'ofwc_comment_required', __( 'This status change needs a comment.', 'order-flow-for-woocommerce' ) );
 		}
 		return null;
