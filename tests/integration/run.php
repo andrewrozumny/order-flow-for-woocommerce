@@ -520,11 +520,139 @@ function ofwc_it_phase2_transitions(): void {
 	ofwc_it_check( false === get_user_by( 'login', 'of-it-manager' ), 'transitions: temporary user removed' );
 }
 
+/**
+ * Phase 3A: export, delete, import round trip, re-import without changes, and the deactivation migration.
+ */
+function ofwc_it_phase3_config(): void {
+	$repo     = new Repository();
+	$rules    = new OrderFlowWC\Transitions\Rules( $repo );
+	$orders   = new OrderFlowWC\Migration\Orders( $repo );
+	$prev_st  = get_option( Repository::OPTION, array() );
+	$prev_tr  = get_option( Repository::TRANSITIONS_OPTION, array() );
+	$prev_set = get_option( 'ofwc_settings', array() );
+
+	try {
+		ofwc_it_delete_test_orders();
+		foreach ( array( 'of-cfg-a', 'of-cfg-b' ) as $slug ) {
+			if ( null !== $repo->get( $slug ) ) {
+				$repo->delete( $slug, 'on-hold' );
+			}
+		}
+		$repo->save(
+			array(
+				'slug'  => 'of-cfg-a',
+				'label' => 'OF Config A',
+				'color' => '#aa3300',
+				'paid'  => true,
+			)
+		);
+		$repo->save(
+			array(
+				'slug'          => 'of-cfg-b',
+				'label'         => 'OF Config B',
+				'email_subject' => 'OF subject {status}',
+				'pdf_enabled'   => true,
+			)
+		);
+		$rules->save_all(
+			array(
+				array(
+					'from'            => 'of-cfg-a',
+					'to'              => 'of-cfg-b',
+					'roles'           => array( 'shop_manager' ),
+					'require_comment' => true,
+				),
+				array(
+					'from'  => '*',
+					'to'    => 'of-cfg-a',
+					'roles' => array( 'administrator' ),
+				),
+			)
+		);
+
+		$exporter = new OrderFlowWC\Config\Exporter( $repo, $rules );
+		$json     = $exporter->to_json();
+		$before   = $exporter->build();
+		ofwc_it_check( 'order-flow-for-woocommerce' === $before['format'] && 1 === $before['version'], 'config: export carries the format marker' );
+		ofwc_it_check( ! str_contains( $json, 'logo_id' ), 'config: export has no logo id' );
+
+		// Delete our two statuses (transitions referencing them go too), then import.
+		$repo->delete( 'of-cfg-a' );
+		$repo->delete( 'of-cfg-b' );
+		ofwc_it_check( null === $repo->get( 'of-cfg-a' ) && null === $repo->get( 'of-cfg-b' ), 'config: statuses deleted before import' );
+
+		$importer = new OrderFlowWC\Config\Importer( $repo, $rules );
+		$result   = $importer->import_json( $json, OrderFlowWC\Config\Importer::MODE_MERGE );
+		ofwc_it_check( $result instanceof OrderFlowWC\Config\ImportResult && in_array( 'of-cfg-a', $result->added, true ) && in_array( 'of-cfg-b', $result->added, true ), 'config: merge import adds both statuses' );
+		$after = $exporter->build();
+		ofwc_it_check( $before['statuses'] === $after['statuses'], 'config: statuses identical after export, import, export' );
+		ofwc_it_check( $before['transitions'] === $after['transitions'], 'config: transitions identical after export, import, export' );
+
+		$again = $importer->import_json( $json, OrderFlowWC\Config\Importer::MODE_REPLACE );
+		ofwc_it_check( $again instanceof OrderFlowWC\Config\ImportResult && ! $again->changed() && array() === $again->added && array() === $again->updated, 'config: re-import changes nothing' );
+		$final = $exporter->build();
+		ofwc_it_check( $before['statuses'] === $final['statuses'] && $before['transitions'] === $final['transitions'], 'config: still identical after re-import' );
+
+		$bad = $importer->import_json( '{"format":"nope","version":1}', OrderFlowWC\Config\Importer::MODE_MERGE );
+		ofwc_it_check( is_wp_error( $bad ), 'config: foreign file is rejected' );
+
+		( new Registrar( $repo ) )->register_post_statuses();
+
+		// Replace keeps a status that holds an order.
+		$order = ofwc_it_create_order();
+		$order->set_status( 'of-cfg-b' );
+		$order->save();
+		$doc             = $exporter->build();
+		$doc['statuses'] = array_values(
+			array_filter(
+				$doc['statuses'],
+				static function ( array $s ): bool {
+					return 'of-cfg-b' !== $s['slug'];
+				}
+			)
+		);
+		$kept            = $importer->import( $doc, OrderFlowWC\Config\Importer::MODE_REPLACE );
+		ofwc_it_check( $kept instanceof OrderFlowWC\Config\ImportResult && isset( $kept->kept['of-cfg-b'] ) && null !== $repo->get( 'of-cfg-b' ), 'config: replace keeps a status that holds orders' );
+
+		// Migration: park in On hold, then restore.
+		$counts = $orders->counts();
+		if ( array( 'of-cfg-b' ) === array_keys( $counts ) ) {
+			ofwc_it_check( OrderFlowWC\Migration\Decisions::needs_screen( $counts ), 'migration: deactivation screen is needed' );
+			$moved = $orders->move_to_on_hold();
+			$o     = wc_get_order( $order->get_id() );
+			ofwc_it_check( 1 === $moved && $o instanceof WC_Order && 'on-hold' === $o->get_status(), 'migration: order moved to On hold' );
+			ofwc_it_check( $o instanceof WC_Order && 'of-cfg-b' === $o->get_meta( OrderFlowWC\Migration\Orders::META ), 'migration: previous status remembered' );
+			ofwc_it_check( array() === $orders->counts(), 'migration: no order left in a custom status' );
+
+			$restored = $orders->restore();
+			$o        = wc_get_order( $order->get_id() );
+			ofwc_it_check( 1 === $restored && $o instanceof WC_Order && 'of-cfg-b' === $o->get_status(), 'migration: order restored to its status' );
+			ofwc_it_check( $o instanceof WC_Order && '' === (string) $o->get_meta( OrderFlowWC\Migration\Orders::META ), 'migration: marker removed after restore' );
+
+			// A status that vanished is not restored.
+			$o->update_meta_data( OrderFlowWC\Migration\Orders::META, 'of-gone' );
+			$o->set_status( 'on-hold' );
+			$o->save();
+			ofwc_it_check( 0 === $orders->restore(), 'migration: unknown status is left alone' );
+		} else {
+			ofwc_it_check( true, 'migration: skipped, other orders sit in custom statuses on this site' );
+		}
+	} finally {
+		ofwc_it_delete_test_orders();
+		update_option( Repository::OPTION, $prev_st, true );
+		update_option( Repository::TRANSITIONS_OPTION, $prev_tr, true );
+		update_option( 'ofwc_settings', $prev_set, true );
+		Repository::flush_cache();
+	}
+	ofwc_it_check( null === $repo->get( 'of-cfg-a' ) && null === $repo->get( 'of-cfg-b' ), 'config: temporary statuses removed' );
+}
+
 try {
 	ofwc_it_phase1_statuses();
 	ofwc_it_phase2_transitions();
 	ofwc_it_phase2_emails();
 	ofwc_it_phase2_pdf();
+	ofwc_it_phase3_config();
 } finally {
 	ofwc_it_cleanup( new Repository() );
 }

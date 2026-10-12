@@ -261,6 +261,9 @@ final class Rules {
 	 * @param string $slug Raw slug.
 	 */
 	private function clean_slug( string $slug ): string {
+		if ( self::ANY === trim( $slug ) ) {
+			return self::ANY;
+		}
 		$slug = sanitize_key( $slug );
 		return 0 === strpos( $slug, 'wc-' ) ? substr( $slug, 3 ) : $slug;
 	}

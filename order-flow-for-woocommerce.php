@@ -41,4 +41,11 @@ add_action(
 	}
 );
 
+register_activation_hook(
+	__FILE__,
+	static function (): void {
+		( new \OrderFlowWC\Migration\Orders() )->restore_or_defer();
+	}
+);
+
 \OrderFlowWC\Plugin::instance()->boot();

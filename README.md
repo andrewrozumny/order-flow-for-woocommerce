@@ -1,0 +1,94 @@
+# Order Flow for WooCommerce
+
+Your own WooCommerce order statuses, rules for who can move an order where, a history of every change, and an email and a PDF document for each status.
+
+![Statuses list](.wordpress-org/screenshot-1.png)
+
+Order Flow is for stores where an order is more than "processing" and "completed": B2B shops, made-to-order stores and service businesses. A typical flow is Awaiting approval, then Approved, then In production. You decide who can approve, what the customer is told, and which document goes out at each step.
+
+Requires WordPress 6.6+, PHP 8.1+, WooCommerce 9.0+. Tested up to WordPress 7.1 and WooCommerce 11.2. Compatible with HPOS.
+
+## What it does
+
+| Area | What you get |
+| --- | --- |
+| Statuses | Label, color and icon. Count as paid, reduce stock, show to the customer in My Account under its own name or as "Processing" |
+| Transition rules | A matrix of "from > to" with the roles allowed to make each move and an optional required comment |
+| History | Who, when, from, to and comment for every change, as order notes and as a table in the Order Flow box |
+| Emails | One WooCommerce email per status for the customer and/or admin, with placeholders `{order_number}` `{status}` `{customer_name}` `{note}` `{order_date}` `{site_title}` `{order_total}` |
+| PDF documents | A document per status with logo, store details, items, totals and free text. Download on the order screen and in My Account, optional email attachment |
+| Configuration | Import and export as JSON (merge or replace) |
+| Safety | Deactivation keeps the statuses or moves orders to On hold and restores them later. A status with orders cannot be deleted without a target status |
+
+### Transition policy
+
+- A move between WooCommerce's own statuses is not restricted.
+- A move into or out of a custom status needs a rule that matches the user's role. Administrators can always make any change, so rules control shop managers and other roles.
+- Rules are enforced for human actions in wp-admin: Order Flow box buttons, the status dropdown and bulk actions. Programmatic changes (payment gateways, REST API, cron, WP-CLI) are not blocked.
+
+## Privacy
+
+No external services. No data leaves your site.
+
+## Install
+
+From a zip: download the release zip, then Plugins > Add New > Upload Plugin, activate, and open WooCommerce > Order Flow.
+
+From source:
+
+```bash
+git clone https://github.com/andrewrozumny/order-flow-for-woocommerce.git
+cd order-flow-for-woocommerce
+composer install --no-dev
+```
+
+`vendor/` holds dompdf, which generates the PDF documents, so `composer install --no-dev` is required when you run the plugin from a git clone. To build an installable zip (with `vendor/` inside):
+
+```bash
+bash bin/build-zip.sh   # writes dist/order-flow-for-woocommerce-<version>.zip
+```
+
+## Extending
+
+Run your own code when an order enters a custom status:
+
+```php
+add_action(
+	'ofwc_status_entered',
+	static function ( WC_Order $order, string $to, string $from, string $comment ): void {
+		if ( 'in-production' === $to ) {
+			$order->update_meta_data( '_my_production_started', time() );
+			$order->save();
+		}
+	},
+	10,
+	4
+);
+```
+
+Other hooks: `ofwc_email_attachments`, `ofwc_pdf_document_data`, `ofwc_admin_tabs`, `ofwc_mask_status_labels`, `ofwc_is_pro`.
+
+Template overrides in your theme:
+
+- `yourtheme/woocommerce/emails/ofwc-status.php` (and `emails/plain/ofwc-status.php`)
+- `yourtheme/order-flow-for-woocommerce/pdf/document.php`
+
+## Development
+
+```bash
+composer install
+composer lint              # PHPCS (WordPress Coding Standards)
+composer analyse           # PHPStan
+composer test              # PHPUnit unit suite
+composer test:integration  # integration tests against a WordPress install
+bash bin/gates.sh          # all quality gates in order
+bash bin/build-zip.sh      # builds dist/order-flow-for-woocommerce-<version>.zip
+```
+
+## License
+
+GPL-2.0-or-later. See [license](https://www.gnu.org/licenses/gpl-2.0.html).
+
+Third-party libraries bundled for PDF generation: dompdf/dompdf (LGPL-2.1), dompdf/php-font-lib (LGPL-2.1-or-later), dompdf/php-svg-lib (LGPL-3.0-or-later), masterminds/html5 (MIT), sabberworm/php-css-parser (MIT). They are GPL-compatible; the combined work is distributed under GPL terms.
+
+Author: Andrew Rozumny, [helpmybiz.org](https://helpmybiz.org).
