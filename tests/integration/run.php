@@ -229,8 +229,302 @@ function ofwc_it_admin_render( Repository $repo ): void {
 	unset( $repo );
 }
 
+/**
+ * Phase 2B: status emails are registered with WooCommerce and sent when an order enters the status.
+ */
+function ofwc_it_phase2_emails(): void {
+	$repo = new Repository();
+	ofwc_it_delete_test_orders();
+	if ( null !== $repo->get( 'of-it-mail' ) ) {
+		$repo->delete( 'of-it-mail' );
+	}
+
+	$saved = $repo->save(
+		array(
+			'slug'           => 'of-it-mail',
+			'label'          => 'OF Mail test',
+			'email_customer' => true,
+			'email_admin'    => true,
+			'email_subject'  => 'OF Mail test: order {order_number} is {status}',
+			'email_heading'  => 'OF heading {status}',
+			'email_body'     => '<p>Hello {customer_name}, note: {note}</p>',
+		)
+	);
+	ofwc_it_check( true === $saved, 'mail test status saved' );
+	$registrar = new Registrar( $repo );
+	$registrar->register_post_statuses();
+
+	// The emails show up in the WooCommerce email list.
+	$classes = apply_filters( 'woocommerce_email_classes', array() );
+	ofwc_it_check( isset( $classes['ofwc_of-it-mail_customer'], $classes['ofwc_of-it-mail_admin'] ), 'both emails are in woocommerce_email_classes' );
+	ofwc_it_check( isset( $classes['ofwc_of-it-mail_customer'] ) && 'Order Flow: OF Mail test (customer)' === $classes['ofwc_of-it-mail_customer']->get_title(), 'email title carries the status label' );
+
+	$order = ofwc_it_create_order();
+	$order->set_billing_email( 'of-it@example.test' );
+	$order->set_billing_first_name( 'OF Mailer' );
+	$order->set_status( 'of-it-mail' );
+	$order->save();
+
+	$captured = array();
+	$capture  = static function ( $mail ) use ( &$captured ): void {
+		$captured[] = $mail;
+	};
+	add_action( 'wp_mail_succeeded', $capture );
+	do_action( 'ofwc_status_entered', $order, 'of-it-mail', 'processing', 'Packed with care' );
+	remove_action( 'wp_mail_succeeded', $capture );
+
+	$subject  = 'OF Mail test: order ' . $order->get_order_number() . ' is OF Mail test';
+	$matching = array_values(
+		array_filter(
+			$captured,
+			static function ( $mail ) use ( $subject ): bool {
+				return is_array( $mail ) && ( $mail['subject'] ?? '' ) === $subject;
+			}
+		)
+	);
+	ofwc_it_check( 2 === count( $matching ), 'two mails with the replaced subject were sent (' . count( $matching ) . ')' );
+
+	$recipients = array();
+	$bodies     = '';
+	foreach ( $matching as $mail ) {
+		$to         = $mail['to'] ?? array();
+		$recipients = array_merge( $recipients, (array) $to );
+		$bodies    .= (string) ( $mail['message'] ?? '' );
+	}
+	ofwc_it_check( in_array( 'of-it@example.test', $recipients, true ), 'customer mail went to the billing address' );
+	ofwc_it_check( in_array( (string) get_option( 'admin_email' ), $recipients, true ), 'admin mail went to the admin recipient' );
+	ofwc_it_check( str_contains( $bodies, 'Packed with care' ) && str_contains( $bodies, 'Hello OF Mailer' ), 'mail body carries the note and the customer name' );
+	ofwc_it_check( str_contains( $bodies, 'OF heading OF Mail test' ), 'mail uses the heading' );
+
+	// Switching the admin flag off sends only the customer mail.
+	$status                = $repo->get( 'of-it-mail' );
+	$status['email_admin'] = false;
+	$repo->save( (array) $status, 'of-it-mail' );
+	$captured = array();
+	add_action( 'wp_mail_succeeded', $capture );
+	do_action( 'ofwc_status_entered', $order, 'of-it-mail', 'processing', '' );
+	remove_action( 'wp_mail_succeeded', $capture );
+	ofwc_it_check( 1 === count( $captured ), 'only the customer mail is sent when the admin flag is off (' . count( $captured ) . ')' );
+
+	ofwc_it_delete_test_orders();
+	$repo->delete( 'of-it-mail' );
+	ofwc_it_check( null === $repo->get( 'of-it-mail' ), 'mail test status removed' );
+}
+
+/**
+ * Phase 2C: PDF rendering, document availability and the email attachment filter.
+ */
+function ofwc_it_phase2_pdf(): void {
+	$repo = new Repository();
+	( new Registrar( $repo ) )->register_post_statuses();
+	if ( null !== $repo->get( 'of-it-pdf' ) ) {
+		$repo->delete( 'of-it-pdf', 'on-hold' );
+	}
+	ofwc_it_delete_test_orders();
+
+	$saved = $repo->save(
+		array(
+			'slug'            => 'of-it-pdf',
+			'label'           => 'OF PDF test',
+			'pdf_enabled'     => true,
+			'pdf_title'       => 'OF Approval sheet',
+			'pdf_text'        => '<p>Please approve order {order_number}.</p>',
+			'show_in_account' => true,
+		)
+	);
+	ofwc_it_check( true === $saved, 'pdf test status saved' );
+	( new Registrar( $repo ) )->register_post_statuses();
+
+	$order = ofwc_it_create_order();
+	$order->set_billing_first_name( 'OF Pdfcustomer' );
+	$order->set_billing_last_name( 'Testsson' );
+	$order->set_status( 'of-it-pdf' );
+	$order->save();
+	$order = wc_get_order( $order->get_id() );
+	if ( ! $order instanceof WC_Order ) {
+		ofwc_it_check( false, 'pdf test order reloads' );
+		return;
+	}
+
+	$docs = new OrderFlowWC\Pdf\Documents( $repo );
+	ofwc_it_check( array( 'of-it-pdf' ) === $docs->slugs( $order ), 'document is available for the order in the status' );
+	ofwc_it_check( str_contains( OrderFlowWC\Pdf\Documents::url( $order, 'of-it-pdf' ), 'action=ofwc_pdf' ), 'download URL targets admin-post ofwc_pdf' );
+
+	$generator = new OrderFlowWC\Pdf\Generator( $repo );
+	$html      = $generator->render_html( $order, 'of-it-pdf' );
+	ofwc_it_check( str_contains( $html, 'OF Approval sheet' ) && str_contains( $html, 'Please approve order ' . $order->get_order_number() ), 'html has title and placeholder text' );
+
+	$pdf = $generator->render_pdf( $order, 'of-it-pdf' );
+	ofwc_it_check( str_starts_with( $pdf, '%PDF' ), 'render_pdf returns a PDF' );
+	$text = '';
+	if ( class_exists( '\Smalot\PdfParser\Parser' ) ) {
+		$text = (string) ( new \Smalot\PdfParser\Parser() )->parseContent( $pdf )->getText();
+	}
+	ofwc_it_check( str_contains( $text, (string) $order->get_order_number() ) && str_contains( $text, 'OF Pdfcustomer' ), 'pdf text has order number and billing name' );
+
+	$paths = apply_filters( 'ofwc_email_attachments', array(), $order, 'of-it-pdf' );
+	$file  = is_array( $paths ) && isset( $paths[0] ) ? (string) $paths[0] : '';
+	// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local temp file.
+	ofwc_it_check( '' !== $file && is_readable( $file ) && str_starts_with( (string) file_get_contents( $file ), '%PDF' ), 'attachment filter returns a readable PDF file' );
+	ofwc_it_check( '' !== $file && file_exists( dirname( $file ) . '/index.php' ) && file_exists( dirname( $file ) . '/.htaccess' ), 'attachment dir is protected' );
+	if ( '' !== $file ) {
+		wp_delete_file( $file );
+	}
+
+	$none = apply_filters( 'ofwc_email_attachments', array(), $order, 'on-hold' );
+	ofwc_it_check( array() === $none, 'no attachment for a status without a document' );
+
+	ofwc_it_delete_test_orders();
+	$repo->delete( 'of-it-pdf' );
+	ofwc_it_check( null === $repo->get( 'of-it-pdf' ), 'pdf test status removed' );
+}
+
+/**
+ * Phase 2A: transition rules by role, the service, history meta, order note and the entered action.
+ */
+function ofwc_it_phase2_transitions(): void {
+	$repo           = new Repository();
+	$rules          = new OrderFlowWC\Transitions\Rules( $repo );
+	$service        = new OrderFlowWC\Transitions\Service( $rules );
+	$previous_rules = get_option( Repository::TRANSITIONS_OPTION, array() );
+	$user_id        = 0;
+
+	try {
+		foreach ( array(
+			'of-it-a' => 'OF IT A',
+			'of-it-b' => 'OF IT B',
+		) as $slug => $label ) {
+			if ( null !== $repo->get( $slug ) ) {
+				$repo->delete( $slug, 'on-hold' );
+			}
+			$saved = $repo->save(
+				array(
+					'slug'  => $slug,
+					'label' => $label,
+				)
+			);
+			ofwc_it_check( true === $saved, "transitions: status {$slug} created" );
+		}
+		( new Registrar( $repo ) )->register_post_statuses();
+
+		$existing = get_user_by( 'login', 'of-it-manager' );
+		if ( $existing instanceof WP_User ) {
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+			wp_delete_user( $existing->ID );
+		}
+		$created = wp_insert_user(
+			array(
+				'user_login' => 'of-it-manager',
+				'user_pass'  => wp_generate_password( 24 ),
+				'user_email' => 'of-it-manager@example.invalid',
+				'role'       => 'shop_manager',
+			)
+		);
+		$user_id = is_int( $created ) ? $created : 0;
+		ofwc_it_check( $user_id > 0, 'transitions: temporary shop manager created' );
+
+		$rules->save_all(
+			array(
+				array(
+					'from'  => 'of-it-a',
+					'to'    => 'of-it-b',
+					'roles' => array( 'shop_manager' ),
+				),
+			)
+		);
+		ofwc_it_check( 1 === count( $rules->all() ), 'transitions: rule saved' );
+		ofwc_it_check( $rules->is_allowed( 'of-it-a', 'of-it-b', $user_id ), 'transitions: manager may move a to b' );
+		ofwc_it_check( ! $rules->is_allowed( 'of-it-b', 'of-it-a', $user_id ), 'transitions: manager may not move b to a' );
+		ofwc_it_check( $rules->is_allowed( 'pending', 'completed', $user_id ), 'transitions: core to core is unrestricted' );
+		ofwc_it_check( in_array( 'of-it-b', $rules->allowed_targets( 'of-it-a', $user_id ), true ), 'transitions: b is an allowed target from a' );
+
+		$admins = get_users(
+			array(
+				'role'   => 'administrator',
+				'number' => 1,
+			)
+		);
+		ofwc_it_check( array() !== $admins && $rules->is_allowed( 'of-it-b', 'of-it-a', $admins[0]->ID ), 'transitions: administrator may do everything' );
+
+		// Service as the manager.
+		$entered  = array();
+		$listener = static function ( $order, $to, $from, $comment ) use ( &$entered ): void {
+			$entered[] = array( $to, $from, $comment );
+		};
+		add_action( 'ofwc_status_entered', $listener, 10, 4 );
+
+		$order = ofwc_it_create_order();
+		$order->set_status( 'of-it-a' );
+		$order->save();
+		$entered = array();
+
+		$denied = $service->transition( wc_get_order( $order->get_id() ), 'of-it-a', '', $user_id );
+		ofwc_it_check( is_wp_error( $denied ), 'transitions: same-status change is refused' );
+
+		$rules->save_all(
+			array(
+				array(
+					'from'            => 'of-it-a',
+					'to'              => 'of-it-b',
+					'roles'           => array( 'shop_manager' ),
+					'require_comment' => true,
+				),
+			)
+		);
+		$missing = $service->transition( wc_get_order( $order->get_id() ), 'of-it-b', '  ', $user_id );
+		ofwc_it_check( is_wp_error( $missing ) && 'ofwc_comment_required' === $missing->get_error_code(), 'transitions: missing comment is refused' );
+
+		$done = $service->transition( wc_get_order( $order->get_id() ), 'of-it-b', 'Proof approved', $user_id );
+		ofwc_it_check( true === $done, 'transitions: manager moves a to b with a comment' );
+
+		$reloaded = wc_get_order( $order->get_id() );
+		ofwc_it_check( $reloaded instanceof WC_Order && 'of-it-b' === $reloaded->get_status(), 'transitions: order is in b' );
+		$history = $reloaded instanceof WC_Order ? OrderFlowWC\History\History::get( $reloaded ) : array();
+		$last    = array() !== $history ? end( $history ) : array(
+			'from'    => '',
+			'to'      => '',
+			'user_id' => 0,
+			'comment' => '',
+		);
+		ofwc_it_check(
+			array() !== $history && 'of-it-a' === $last['from'] && 'of-it-b' === $last['to'] && $user_id === (int) $last['user_id'] && 'Proof approved' === $last['comment'],
+			'transitions: history entry recorded'
+		);
+		$notes = $reloaded instanceof WC_Order ? wc_get_order_notes( array( 'order_id' => $reloaded->get_id() ) ) : array();
+		$found = false;
+		foreach ( $notes as $note ) {
+			if ( str_contains( $note->content, 'Order Flow:' ) && str_contains( $note->content, 'Proof approved' ) && ! $note->customer_note ) {
+				$found = true;
+			}
+		}
+		ofwc_it_check( $found, 'transitions: private order note written' );
+		ofwc_it_check( array( array( 'of-it-b', 'of-it-a', 'Proof approved' ) ) === $entered, 'transitions: ofwc_status_entered fired once with the comment' );
+		remove_action( 'ofwc_status_entered', $listener, 10 );
+
+		ofwc_it_check( OrderFlowWC\Transitions\Rules::ANY === '*', 'transitions: wildcard constant' );
+	} finally {
+		if ( $user_id > 0 ) {
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+			wp_delete_user( $user_id );
+		}
+		ofwc_it_delete_test_orders();
+		foreach ( array( 'of-it-a', 'of-it-b' ) as $slug ) {
+			if ( null !== $repo->get( $slug ) ) {
+				$repo->delete( $slug, 'on-hold' );
+			}
+		}
+		update_option( Repository::TRANSITIONS_OPTION, $previous_rules, true );
+		Repository::flush_cache();
+	}
+	ofwc_it_check( null === $repo->get( 'of-it-a' ) && null === $repo->get( 'of-it-b' ), 'transitions: temporary statuses removed' );
+	ofwc_it_check( false === get_user_by( 'login', 'of-it-manager' ), 'transitions: temporary user removed' );
+}
+
 try {
 	ofwc_it_phase1_statuses();
+	ofwc_it_phase2_transitions();
+	ofwc_it_phase2_emails();
+	ofwc_it_phase2_pdf();
 } finally {
 	ofwc_it_cleanup( new Repository() );
 }

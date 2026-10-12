@@ -1,0 +1,16 @@
+.ofwc-box .ofwc-current { margin-top: 0; }
+.ofwc-box .ofwc-current .order-status { margin-left: 4px; }
+.ofwc-box .ofwc-actions { margin: 8px 0 12px; }
+.ofwc-box .ofwc-actions .button { margin: 0 6px 6px 0; }
+.ofwc-box .ofwc-star { color: #b32d2e; font-weight: 600; }
+.ofwc-box .ofwc-comment-row textarea { margin-top: 4px; }
+.ofwc-box .ofwc-comment-row.ofwc-comment-missing textarea { border-color: #b32d2e; box-shadow: 0 0 0 1px #b32d2e; }
+.ofwc-box .ofwc-required { color: #b32d2e; }
+.ofwc-box .ofwc-history-title { margin: 16px 0 6px; }
+.ofwc-box .ofwc-history th, .ofwc-box .ofwc-history td { vertical-align: top; }
+
+.ofwc-policy-list { list-style: disc; margin-left: 20px; max-width: 760px; }
+.ofwc-rules { margin-top: 12px; }
+.ofwc-rules td { vertical-align: top; }
+.ofwc-rules .ofwc-role { display: block; margin-bottom: 2px; }
+.ofwc-rules select { min-width: 160px; max-width: 100%; }
