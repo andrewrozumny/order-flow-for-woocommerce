@@ -131,6 +131,10 @@ final class Buttons {
 		if ( ! is_array( $actions ) || ! $order instanceof WC_Order ) {
 			return $actions;
 		}
+		// The view-order page lists the documents in its own section, so do not repeat them as actions there.
+		if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'view-order' ) ) {
+			return $actions;
+		}
 		foreach ( $this->customer_documents( $order ) as $slug => $link ) {
 			$actions[ 'ofwc_pdf_' . $slug ] = array(
 				'url'  => $link['url'],

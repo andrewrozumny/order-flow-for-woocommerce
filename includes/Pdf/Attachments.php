@@ -103,8 +103,12 @@ final class Attachments {
 		if ( '' === $pdf ) {
 			return '';
 		}
-		$name = preg_replace( '/\.pdf$/', '', $this->generator->filename( $order, $config ) ) . '-' . wp_generate_password( 12, false ) . '.pdf';
-		$path = $dir . '/' . $name;
+		// A random subdirectory keeps the path unguessable while the customer sees a clean file name.
+		$sub = $dir . '/' . wp_generate_password( 16, false );
+		if ( ! wp_mkdir_p( $sub ) ) {
+			return '';
+		}
+		$path = $sub . '/' . $this->generator->filename( $order, $config );
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Temporary file in uploads.
 		if ( false === file_put_contents( $path, $pdf ) ) {
 			return '';
@@ -122,6 +126,7 @@ final class Attachments {
 	public function cleanup(): void {
 		foreach ( $this->pending as $path ) {
 			wp_delete_file( $path );
+			$this->remove_dir( dirname( $path ) );
 		}
 		$this->pending = array();
 	}
@@ -158,7 +163,7 @@ final class Attachments {
 	 * @param string $dir Directory.
 	 */
 	private function purge( string $dir ): void {
-		$files = glob( $dir . '/*.pdf' );
+		$files = glob( $dir . '/*/*.pdf' );
 		if ( false === $files ) {
 			return;
 		}
@@ -166,7 +171,25 @@ final class Attachments {
 			$time = filemtime( $file );
 			if ( false !== $time && $time < time() - self::MAX_AGE ) {
 				wp_delete_file( $file );
+				$this->remove_dir( dirname( $file ) );
 			}
+		}
+	}
+
+	/**
+	 * Remove an empty per-file subdirectory of the temp directory.
+	 *
+	 * @param string $sub Subdirectory path.
+	 */
+	private function remove_dir( string $sub ): void {
+		$base = basename( dirname( $sub ) );
+		if ( self::DIR !== $base || ! is_dir( $sub ) ) {
+			return;
+		}
+		$left = glob( $sub . '/*' );
+		if ( is_array( $left ) && array() === $left ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- Empty temp directory in uploads.
+			rmdir( $sub );
 		}
 	}
 }

@@ -17,7 +17,8 @@ rsync -a --exclude-from=.distignore --exclude='/vendor' ./ "$STAGE/$SLUG/"
 
 cp composer.json composer.lock "$STAGE/$SLUG/"
 ( cd "$STAGE/$SLUG" && composer install --no-dev --optimize-autoloader --no-interaction --no-progress --quiet )
-rm -f "$STAGE/$SLUG/composer.json" "$STAGE/$SLUG/composer.lock"
+# composer.json ships with vendor/ (WordPress.org asks for it), the lock file does not.
+rm -f "$STAGE/$SLUG/composer.lock"
 find "$STAGE/$SLUG/vendor" -name '.git*' -prune -exec rm -rf {} + 2>/dev/null || true
 
 ZIP="$PWD/dist/$SLUG-$VERSION.zip"

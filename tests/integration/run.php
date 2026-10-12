@@ -136,8 +136,10 @@ function ofwc_it_phase1_statuses(): void {
 
 	$statuses = wc_get_order_statuses();
 	ofwc_it_check( isset( $statuses['wc-of-int-test'] ) && 'OF Integration test' === $statuses['wc-of-int-test'], 'wc_get_order_statuses() contains wc-of-int-test' );
-	$keys = array_keys( $statuses );
-	ofwc_it_check( array_search( 'wc-of-int-test', $keys, true ) === array_search( 'wc-processing', $keys, true ) + 1, 'custom status sits right after Processing' );
+	$keys        = array_keys( $statuses );
+	$pos_custom  = array_search( 'wc-of-int-test', $keys, true );
+	$pos_on_hold = array_search( 'wc-on-hold', $keys, true );
+	ofwc_it_check( false !== $pos_custom && false !== $pos_on_hold && $pos_custom > array_search( 'wc-processing', $keys, true ) && $pos_custom < $pos_on_hold, 'custom status sits between Processing and On hold' );
 	ofwc_it_check( in_array( 'of-int-test', wc_get_is_paid_statuses(), true ), 'paid filter includes the status' );
 
 	// Order round trip.
@@ -366,9 +368,12 @@ function ofwc_it_phase2_pdf(): void {
 	$file  = is_array( $paths ) && isset( $paths[0] ) ? (string) $paths[0] : '';
 	// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local temp file.
 	ofwc_it_check( '' !== $file && is_readable( $file ) && str_starts_with( (string) file_get_contents( $file ), '%PDF' ), 'attachment filter returns a readable PDF file' );
-	ofwc_it_check( '' !== $file && file_exists( dirname( $file ) . '/index.php' ) && file_exists( dirname( $file ) . '/.htaccess' ), 'attachment dir is protected' );
+	ofwc_it_check( '' !== $file && file_exists( dirname( $file, 2 ) . '/index.php' ) && file_exists( dirname( $file, 2 ) . '/.htaccess' ), 'attachment dir is protected' );
+	ofwc_it_check( '' !== $file && 'pdf' === pathinfo( $file, PATHINFO_EXTENSION ) && 1 === preg_match( '/^[a-z0-9-]+-\d+\.pdf$/', basename( $file ) ), 'attachment has a clean file name' );
 	if ( '' !== $file ) {
 		wp_delete_file( $file );
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- Empty temp directory.
+		rmdir( dirname( $file ) );
 	}
 
 	$none = apply_filters( 'ofwc_email_attachments', array(), $order, 'on-hold' );
