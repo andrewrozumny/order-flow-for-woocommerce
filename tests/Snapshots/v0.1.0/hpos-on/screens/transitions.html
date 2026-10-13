@@ -1,0 +1,263 @@
+<div class="ofwc-tab-content">
+<div class="ofwc-policy">
+<p>Control who may move an order into or out of your custom statuses.</p>
+<ul class="ofwc-policy-list">
+<li>Changes between two WooCommerce statuses are never restricted.</li>
+<li>A change into or out of a custom status needs a matching rule that lists one of the user&#039;s roles.</li>
+<li>Administrators can always make any change.</li>
+<li>Rules apply to people working in wp-admin (order screen, bulk actions, Order Flow buttons). Gateways, the REST API, cron and WP-CLI are not blocked.</li>
+<li>&quot;Require comment&quot; asks for a note with the change. Bulk actions skip such orders.</li>
+</ul>
+</div>
+<form method="post" action="http://localhost:8080/wp-admin/admin-post.php" class="ofwc-form ofwc-rules-form">
+<input type="hidden" id="_wpnonce" name="_wpnonce" value="{NONCE}" />
+<input type="hidden" name="_wp_http_referer" value="/wp-admin/admin.php?page=ofwc&#038;tab=transitions" />
+<input type="hidden" name="action" value="ofwc_save_transitions">
+<table class="widefat striped ofwc-rules">
+<thead>
+<tr>
+<th scope="col">From</th>
+<th scope="col">To</th>
+<th scope="col">Roles</th>
+<th scope="col">Require comment</th>
+<th scope="col">
+</th>
+</tr>
+</thead>
+<tbody class="ofwc-rules-body">
+<tr class="ofwc-rule">
+<td>
+<select name="rules[0][from]">
+<option value="*">Any status</option>
+<option value="pending" selected='selected'>Pending payment</option>
+<option value="processing">Processing</option>
+<option value="awaiting-approval">Awaiting approval</option>
+<option value="approved">Approved</option>
+<option value="in-production">In production</option>
+<option value="on-hold">On hold</option>
+<option value="completed">Completed</option>
+<option value="cancelled">Cancelled</option>
+<option value="refunded">Refunded</option>
+<option value="failed">Failed</option>
+<option value="checkout-draft">Draft</option>
+</select>
+</td>
+<td>
+<select name="rules[0][to]">
+<option value="pending">Pending payment</option>
+<option value="processing">Processing</option>
+<option value="awaiting-approval" selected='selected'>Awaiting approval</option>
+<option value="approved">Approved</option>
+<option value="in-production">In production</option>
+<option value="on-hold">On hold</option>
+<option value="completed">Completed</option>
+<option value="cancelled">Cancelled</option>
+<option value="refunded">Refunded</option>
+<option value="failed">Failed</option>
+<option value="checkout-draft">Draft</option>
+</select>
+</td>
+<td>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[0][roles][]" value="administrator" checked='checked'> Administrator</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[0][roles][]" value="editor"> Editor</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[0][roles][]" value="author"> Author</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[0][roles][]" value="contributor"> Contributor</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[0][roles][]" value="subscriber"> Subscriber</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[0][roles][]" value="customer"> Customer</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[0][roles][]" value="shop_manager" checked='checked'> Shop manager</label>
+</td>
+<td>
+<label>
+<input type="checkbox" name="rules[0][require_comment]" value="1"> Require comment</label>
+</td>
+<td>
+<button type="button" class="button-link ofwc-remove-rule">Remove</button>
+</td>
+</tr>
+<tr class="ofwc-rule">
+<td>
+<select name="rules[1][from]">
+<option value="*">Any status</option>
+<option value="pending">Pending payment</option>
+<option value="processing">Processing</option>
+<option value="awaiting-approval" selected='selected'>Awaiting approval</option>
+<option value="approved">Approved</option>
+<option value="in-production">In production</option>
+<option value="on-hold">On hold</option>
+<option value="completed">Completed</option>
+<option value="cancelled">Cancelled</option>
+<option value="refunded">Refunded</option>
+<option value="failed">Failed</option>
+<option value="checkout-draft">Draft</option>
+</select>
+</td>
+<td>
+<select name="rules[1][to]">
+<option value="pending">Pending payment</option>
+<option value="processing">Processing</option>
+<option value="awaiting-approval">Awaiting approval</option>
+<option value="approved" selected='selected'>Approved</option>
+<option value="in-production">In production</option>
+<option value="on-hold">On hold</option>
+<option value="completed">Completed</option>
+<option value="cancelled">Cancelled</option>
+<option value="refunded">Refunded</option>
+<option value="failed">Failed</option>
+<option value="checkout-draft">Draft</option>
+</select>
+</td>
+<td>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[1][roles][]" value="administrator" checked='checked'> Administrator</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[1][roles][]" value="editor"> Editor</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[1][roles][]" value="author"> Author</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[1][roles][]" value="contributor"> Contributor</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[1][roles][]" value="subscriber"> Subscriber</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[1][roles][]" value="customer"> Customer</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[1][roles][]" value="shop_manager"> Shop manager</label>
+</td>
+<td>
+<label>
+<input type="checkbox" name="rules[1][require_comment]" value="1" checked='checked'> Require comment</label>
+</td>
+<td>
+<button type="button" class="button-link ofwc-remove-rule">Remove</button>
+</td>
+</tr>
+<tr class="ofwc-rule">
+<td>
+<select name="rules[2][from]">
+<option value="*">Any status</option>
+<option value="pending">Pending payment</option>
+<option value="processing">Processing</option>
+<option value="awaiting-approval">Awaiting approval</option>
+<option value="approved" selected='selected'>Approved</option>
+<option value="in-production">In production</option>
+<option value="on-hold">On hold</option>
+<option value="completed">Completed</option>
+<option value="cancelled">Cancelled</option>
+<option value="refunded">Refunded</option>
+<option value="failed">Failed</option>
+<option value="checkout-draft">Draft</option>
+</select>
+</td>
+<td>
+<select name="rules[2][to]">
+<option value="pending">Pending payment</option>
+<option value="processing">Processing</option>
+<option value="awaiting-approval">Awaiting approval</option>
+<option value="approved">Approved</option>
+<option value="in-production" selected='selected'>In production</option>
+<option value="on-hold">On hold</option>
+<option value="completed">Completed</option>
+<option value="cancelled">Cancelled</option>
+<option value="refunded">Refunded</option>
+<option value="failed">Failed</option>
+<option value="checkout-draft">Draft</option>
+</select>
+</td>
+<td>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[2][roles][]" value="administrator" checked='checked'> Administrator</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[2][roles][]" value="editor"> Editor</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[2][roles][]" value="author"> Author</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[2][roles][]" value="contributor"> Contributor</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[2][roles][]" value="subscriber"> Subscriber</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[2][roles][]" value="customer"> Customer</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[2][roles][]" value="shop_manager" checked='checked'> Shop manager</label>
+</td>
+<td>
+<label>
+<input type="checkbox" name="rules[2][require_comment]" value="1"> Require comment</label>
+</td>
+<td>
+<button type="button" class="button-link ofwc-remove-rule">Remove</button>
+</td>
+</tr>
+</tbody>
+</table>
+<template class="ofwc-rule-template">
+<tr class="ofwc-rule">
+<td>
+<select name="rules[__INDEX__][from]">
+<option value="*" selected='selected'>Any status</option>
+<option value="pending">Pending payment</option>
+<option value="processing">Processing</option>
+<option value="awaiting-approval">Awaiting approval</option>
+<option value="approved">Approved</option>
+<option value="in-production">In production</option>
+<option value="on-hold">On hold</option>
+<option value="completed">Completed</option>
+<option value="cancelled">Cancelled</option>
+<option value="refunded">Refunded</option>
+<option value="failed">Failed</option>
+<option value="checkout-draft">Draft</option>
+</select>
+</td>
+<td>
+<select name="rules[__INDEX__][to]">
+<option value="pending">Pending payment</option>
+<option value="processing">Processing</option>
+<option value="awaiting-approval">Awaiting approval</option>
+<option value="approved">Approved</option>
+<option value="in-production">In production</option>
+<option value="on-hold">On hold</option>
+<option value="completed">Completed</option>
+<option value="cancelled">Cancelled</option>
+<option value="refunded">Refunded</option>
+<option value="failed">Failed</option>
+<option value="checkout-draft">Draft</option>
+</select>
+</td>
+<td>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[__INDEX__][roles][]" value="administrator"> Administrator</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[__INDEX__][roles][]" value="editor"> Editor</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[__INDEX__][roles][]" value="author"> Author</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[__INDEX__][roles][]" value="contributor"> Contributor</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[__INDEX__][roles][]" value="subscriber"> Subscriber</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[__INDEX__][roles][]" value="customer"> Customer</label>
+<label class="ofwc-check ofwc-role">
+<input type="checkbox" name="rules[__INDEX__][roles][]" value="shop_manager"> Shop manager</label>
+</td>
+<td>
+<label>
+<input type="checkbox" name="rules[__INDEX__][require_comment]" value="1"> Require comment</label>
+</td>
+<td>
+<button type="button" class="button-link ofwc-remove-rule">Remove</button>
+</td>
+</tr>
+</template>
+<p>
+<button type="button" class="button ofwc-add-rule" data-next="3">Add rule</button>
+</p>
+<p class="submit">
+<input type="submit" name="submit" id="submit" class="button button-primary" value="Save transitions"  />
+</p>
+</form>
+</div>

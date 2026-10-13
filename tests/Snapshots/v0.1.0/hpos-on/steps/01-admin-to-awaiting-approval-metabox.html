@@ -1,0 +1,89 @@
+<div id="ofwc-order-flow" class="postbox "  role="region" aria-label="Order Flow">
+<div class="postbox-header">
+<h2 class="hndle" id="ofwc-order-flow-title">Order Flow</h2>
+<div class="handle-actions hide-if-no-js">
+<span class="wp-tooltip wp-is-tooltip">
+<button aria-label="Move up" type="button" class="handle-order-higher wp-tooltip__toggle" aria-describedby="ofwc-order-flow-title">
+<span class="screen-reader-text">Move up</span>
+<span class="order-higher-indicator" aria-hidden="true">
+</span>
+</button>
+<span popover="hint" id="ofwc-order-flow-handle-order-higher-description" class="wp-tooltip__bubble" role="tooltip">
+<span id="ofwc-order-flow-handle-order-higher-description-text" class="wp-tooltip__text">Move up</span>
+</span>
+</span>
+<span class="wp-tooltip wp-is-tooltip">
+<button aria-label="Move down" type="button" class="handle-order-lower wp-tooltip__toggle" aria-describedby="ofwc-order-flow-title">
+<span class="screen-reader-text">Move down</span>
+<span class="order-lower-indicator" aria-hidden="true">
+</span>
+</button>
+<span popover="hint" id="ofwc-order-flow-handle-order-lower-description" class="wp-tooltip__bubble" role="tooltip">
+<span id="ofwc-order-flow-handle-order-lower-description-text" class="wp-tooltip__text">Move down</span>
+</span>
+</span>
+<span class="wp-tooltip wp-is-tooltip">
+<button aria-label="Show or hide panel" type="button" class="handlediv wp-tooltip__toggle" aria-expanded="true" aria-describedby="ofwc-order-flow-title">
+<span class="screen-reader-text">Show or hide panel</span>
+<span class="toggle-indicator" aria-hidden="true">
+</span>
+</button>
+<span popover="hint" id="ofwc-order-flow-handlediv" class="wp-tooltip__bubble" role="tooltip">
+<span id="ofwc-order-flow-handlediv-text" class="wp-tooltip__text">Show or hide panel</span>
+</span>
+</span>
+</div>
+</div>
+<div class="inside">
+<div class="ofwc-box" data-order="{ORDER}" data-nonce="{NONCE}">
+<p class="ofwc-current">Current status: <mark class="order-status status-awaiting-approval">
+<span>Awaiting approval</span>
+</mark>
+</p>
+<div class="ofwc-actions">
+<button type="button" class="button ofwc-transition" data-to="pending" data-comment-required="0">Pending payment</button>
+<button type="button" class="button ofwc-transition" data-to="processing" data-comment-required="0">Processing</button>
+<button type="button" class="button ofwc-transition" data-to="approved" data-comment-required="1">Approved <span class="ofwc-star" aria-hidden="true">*</span>
+<span class="screen-reader-text">(comment required)</span>
+</button>
+<button type="button" class="button ofwc-transition" data-to="in-production" data-comment-required="0">In production</button>
+<button type="button" class="button ofwc-transition" data-to="on-hold" data-comment-required="0">On hold</button>
+<button type="button" class="button ofwc-transition" data-to="completed" data-comment-required="0">Completed</button>
+<button type="button" class="button ofwc-transition" data-to="cancelled" data-comment-required="0">Cancelled</button>
+<button type="button" class="button ofwc-transition" data-to="refunded" data-comment-required="0">Refunded</button>
+<button type="button" class="button ofwc-transition" data-to="failed" data-comment-required="0">Failed</button>
+<button type="button" class="button ofwc-transition" data-to="checkout-draft" data-comment-required="0">Draft</button>
+</div>
+<p class="ofwc-comment-row">
+<label for="ofwc_comment">
+<strong>Comment</strong>
+<span class="ofwc-required" hidden>(required for this change)</span>
+</label>
+<textarea id="ofwc_comment" name="ofwc_comment" rows="3" class="widefat">
+</textarea>
+</p>
+<p class="description">* This change needs a comment.</p>
+<h4 class="ofwc-history-title">Status history</h4>
+<table class="widefat striped ofwc-history">
+<thead>
+<tr>
+<th scope="col">When</th>
+<th scope="col">Who</th>
+<th scope="col">From</th>
+<th scope="col">To</th>
+<th scope="col">Comment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>{DATETIME}</td>
+<td>Admin Snapshot</td>
+<td>Pending payment</td>
+<td>Awaiting approval</td>
+<td>Initial intake</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>

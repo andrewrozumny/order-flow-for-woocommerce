@@ -1,0 +1,101 @@
+<div class="ofwc-tab-content">
+<p>Custom order statuses appear next to the WooCommerce ones in the order list, the order screen and reports.</p>
+<p>
+<a href="http://localhost:8080/wp-admin/admin.php?page=ofwc&#038;tab=statuses&#038;view=add" class="button button-primary">Add status</a>
+</p>
+<table class="wp-list-table widefat fixed striped ofwc-table">
+<thead>
+<tr>
+<th scope="col" class="column-primary">Status</th>
+<th scope="col">Slug</th>
+<th scope="col">Settings</th>
+<th scope="col" class="column-orders">Orders</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="column-primary">
+<span class="ofwc-swatch" style="background:#f0ad4e">
+</span>
+<span class="dashicons dashicons-clock ofwc-icon">
+</span>
+<strong>
+<a href="http://localhost:8080/wp-admin/admin.php?page=ofwc&#038;tab=statuses&#038;view=edit&#038;status=awaiting-approval">Awaiting approval</a>
+</strong>
+<div class="row-actions visible">
+<span class="edit">
+<a href="http://localhost:8080/wp-admin/admin.php?page=ofwc&#038;tab=statuses&#038;view=edit&#038;status=awaiting-approval">Edit</a> | </span>
+<span class="delete">
+<a href="http://localhost:8080/wp-admin/admin.php?page=ofwc&#038;tab=statuses&#038;view=delete&#038;status=awaiting-approval" class="submitdelete">Delete</a>
+</span>
+</div>
+</td>
+<td>
+<code>wc-awaiting-approval</code>
+</td>
+<td>
+<span class="ofwc-flag">Visible to customer</span>
+<span class="ofwc-flag">Customer email</span>
+<span class="ofwc-flag">Admin email</span>
+<span class="ofwc-flag">PDF</span>
+</td>
+<td class="column-orders">0</td>
+</tr>
+<tr>
+<td class="column-primary">
+<span class="ofwc-swatch" style="background:#46b450">
+</span>
+<span class="dashicons dashicons-yes-alt ofwc-icon">
+</span>
+<strong>
+<a href="http://localhost:8080/wp-admin/admin.php?page=ofwc&#038;tab=statuses&#038;view=edit&#038;status=approved">Approved</a>
+</strong>
+<div class="row-actions visible">
+<span class="edit">
+<a href="http://localhost:8080/wp-admin/admin.php?page=ofwc&#038;tab=statuses&#038;view=edit&#038;status=approved">Edit</a> | </span>
+<span class="delete">
+<a href="http://localhost:8080/wp-admin/admin.php?page=ofwc&#038;tab=statuses&#038;view=delete&#038;status=approved" class="submitdelete">Delete</a>
+</span>
+</div>
+</td>
+<td>
+<code>wc-approved</code>
+</td>
+<td>
+<span class="ofwc-flag">Paid</span>
+<span class="ofwc-flag">Visible to customer</span>
+<span class="ofwc-flag">Customer email</span>
+<span class="ofwc-flag">PDF</span>
+</td>
+<td class="column-orders">0</td>
+</tr>
+<tr>
+<td class="column-primary">
+<span class="ofwc-swatch" style="background:#2271b1">
+</span>
+<span class="dashicons dashicons-hammer ofwc-icon">
+</span>
+<strong>
+<a href="http://localhost:8080/wp-admin/admin.php?page=ofwc&#038;tab=statuses&#038;view=edit&#038;status=in-production">In production</a>
+</strong>
+<div class="row-actions visible">
+<span class="edit">
+<a href="http://localhost:8080/wp-admin/admin.php?page=ofwc&#038;tab=statuses&#038;view=edit&#038;status=in-production">Edit</a> | </span>
+<span class="delete">
+<a href="http://localhost:8080/wp-admin/admin.php?page=ofwc&#038;tab=statuses&#038;view=delete&#038;status=in-production" class="submitdelete">Delete</a>
+</span>
+</div>
+</td>
+<td>
+<code>wc-in-production</code>
+</td>
+<td>
+<span class="ofwc-flag">Customer email</span>
+<span class="ofwc-flag">Admin email</span>
+<span class="ofwc-flag">PDF</span>
+</td>
+<td class="column-orders">1</td>
+</tr>
+</tbody>
+</table>
+</div>

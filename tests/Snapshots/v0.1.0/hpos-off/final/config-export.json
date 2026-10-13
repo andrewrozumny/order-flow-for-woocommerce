@@ -1,0 +1,98 @@
+{
+  "http": 200,
+  "type": "application/json; charset=utf-8",
+  "config": {
+    "format": "order-flow-for-woocommerce",
+    "version": 1,
+    "statuses": [
+      {
+        "slug": "awaiting-approval",
+        "label": "Awaiting approval",
+        "color": "#f0ad4e",
+        "icon": "dashicons-clock",
+        "paid": false,
+        "show_in_account": true,
+        "reduce_stock": false,
+        "email_customer": true,
+        "email_admin": true,
+        "email_subject": "[{site_title}] Order {order_number} waits for approval",
+        "email_heading": "Waiting for approval",
+        "email_body": "<p>Hello {customer_name},</p><p>Order {order_number} from {order_date} ({order_total}) is <strong>{status}</strong>.</p><p>Comment: {note}</p>",
+        "pdf_enabled": true,
+        "pdf_title": "Request {order_number}",
+        "pdf_text": "<p>This request for {customer_name} is <em>{status}</em>.</p><ul><li>Check the drawing</li><li>Confirm the price {order_total}</li></ul>",
+        "pdf_attach": true,
+        "position": 1
+      },
+      {
+        "slug": "approved",
+        "label": "Approved",
+        "color": "#46b450",
+        "icon": "dashicons-yes-alt",
+        "paid": true,
+        "show_in_account": true,
+        "reduce_stock": false,
+        "email_customer": true,
+        "email_admin": false,
+        "email_subject": "Order {order_number} approved",
+        "email_heading": "Approved",
+        "email_body": "<p>Good news, {customer_name}. Order {order_number} is approved.</p><p>{note}</p>",
+        "pdf_enabled": true,
+        "pdf_title": "Approval {order_number}",
+        "pdf_text": "<p>Approved for production. Thank you, {customer_name}.</p>",
+        "pdf_attach": false,
+        "position": 2
+      },
+      {
+        "slug": "in-production",
+        "label": "In production",
+        "color": "#2271b1",
+        "icon": "dashicons-hammer",
+        "paid": false,
+        "show_in_account": false,
+        "reduce_stock": false,
+        "email_customer": true,
+        "email_admin": true,
+        "email_subject": "Order {order_number} is {status}",
+        "email_heading": "In production",
+        "email_body": "<p>{customer_name}, production of order {order_number} has started.</p>",
+        "pdf_enabled": true,
+        "pdf_title": "Work order {order_number}",
+        "pdf_text": "<p>Internal work order.</p>",
+        "pdf_attach": true,
+        "position": 3
+      }
+    ],
+    "transitions": [
+      {
+        "from": "pending",
+        "to": "awaiting-approval",
+        "roles": [
+          "administrator",
+          "shop_manager"
+        ],
+        "require_comment": false
+      },
+      {
+        "from": "awaiting-approval",
+        "to": "approved",
+        "roles": [
+          "administrator"
+        ],
+        "require_comment": true
+      },
+      {
+        "from": "approved",
+        "to": "in-production",
+        "roles": [
+          "administrator",
+          "shop_manager"
+        ],
+        "require_comment": false
+      }
+    ],
+    "settings": {
+      "store_details": "<strong>Acme Workshop</strong><br>1 Main Street<br>VAT 12345"
+    }
+  }
+}

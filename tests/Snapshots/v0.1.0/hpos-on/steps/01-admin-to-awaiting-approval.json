@@ -1,0 +1,57 @@
+{
+  "request": {
+    "actor": "admin",
+    "to": "awaiting-approval",
+    "comment": "Initial intake"
+  },
+  "http": {
+    "status": 302,
+    "location": "http://localhost:8080/wp-admin/admin.php?page=wc-orders&action=edit&id={ORDER}"
+  },
+  "notices": [
+    {
+      "type": "success",
+      "message": "Order status changed to Awaiting approval."
+    }
+  ],
+  "order": {
+    "status": "awaiting-approval",
+    "paid": false,
+    "notes": [
+      {
+        "content": "Order status changed from Pending payment to Awaiting approval.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Order Flow: Pending payment to Awaiting approval by Admin Snapshot. Comment: Initial intake",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Email \"Order Flow: Awaiting approval (customer)\" sent.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Email \"Order Flow: Awaiting approval (admin)\" sent.",
+        "customer_note": false,
+        "added_by": "system"
+      }
+    ],
+    "history": [
+      {
+        "from": "pending",
+        "to": "awaiting-approval",
+        "user": "of-destr-admin",
+        "comment": "Initial intake",
+        "has_time": true
+      }
+    ],
+    "total": "378.80"
+  },
+  "mails": [
+    "mails/01",
+    "mails/02"
+  ]
+}

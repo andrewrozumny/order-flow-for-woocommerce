@@ -1,0 +1,75 @@
+{
+  "after_step": "04-admin-to-in-production",
+  "to": [
+    "admin@example.test"
+  ],
+  "cc": [],
+  "bcc": [],
+  "from": "admin@example.test",
+  "reply_to": [
+    "admin@example.test"
+  ],
+  "subject": "Order {ORDER} is In production",
+  "content_type": "text/html",
+  "has_alt_body": false,
+  "attachments": [
+    {
+      "name": "work-order-{ORDER}-{ORDER}.pdf",
+      "bytes": "non-empty",
+      "pdf": {
+        "is_pdf": true,
+        "bytes": "non-empty",
+        "pages": 1,
+        "page_sizes": [
+          [
+            0,
+            0,
+            595.3,
+            841.9
+          ]
+        ],
+        "fonts": [
+          "DejaVuSans",
+          "DejaVuSans-Bold"
+        ],
+        "text": [
+          [
+            "Acme Workshop",
+            "1 Main Street",
+            "VAT 12345",
+            "Work order {ORDER}",
+            "Order #{ORDER}  |  January 15, 2026  |  In production",
+            "BILLING ADDRESS",
+            "Alice Snapshot",
+            "Snapshot Studio",
+            "77 Elm Road",
+            "Suite 4",
+            "Portland, OR 97201",
+            "United States (US)",
+            "SHIPPING ADDRESS",
+            "Alice Snapshot",
+            "Snapshot Studio",
+            "9 Dock Street",
+            "Portland, OR 97201",
+            "United States (US)",
+            "Product\tQty\tUnit price\tTotal",
+            "Oak desk, 120 cm",
+            "SKU: SNAP-001",
+            "1\t$249.00\t$249.00",
+            "Desk lamp \"Nordic\"",
+            "SKU: SNAP-002",
+            "2\t$39.90\t$79.80",
+            "Cable tray & clips",
+            "SKU: SNAP-003",
+            "4\t$12.50\t$50.00",
+            "Subtotal\t$378.80",
+            "Total\t$378.80",
+            "Payment method\tDirect bank transfer",
+            "Internal work order.",
+            "http://localhost:8080"
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "request": {
+    "actor": "admin",
+    "to": "does-not-exist",
+    "comment": "Unknown target"
+  },
+  "http": {
+    "status": 302,
+    "location": "http://localhost:8080/wp-admin/admin.php?page=wc-orders&action=edit&id={ORDER}"
+  },
+  "notices": [
+    {
+      "type": "error",
+      "message": "The target status does not exist."
+    }
+  ],
+  "order": {
+    "status": "in-production",
+    "paid": false,
+    "notes": [
+      {
+        "content": "Order status changed from Pending payment to Awaiting approval.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Order Flow: Pending payment to Awaiting approval by Admin Snapshot. Comment: Initial intake",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Email \"Order Flow: Awaiting approval (customer)\" sent.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Email \"Order Flow: Awaiting approval (admin)\" sent.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Order status changed from Awaiting approval to In production.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Order Flow: Awaiting approval to In production by Admin Snapshot. Comment: Skipping the approval step",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Email \"Order Flow: In production (customer)\" sent.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Email \"Order Flow: In production (admin)\" sent.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Order status changed from In production to Approved.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Order Flow: In production to Approved by Admin Snapshot. Comment: Checked & approved by QA \"ok\"",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Email \"Order Flow: Approved (customer)\" sent.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Order status changed from Approved to In production.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Order Flow: Approved to In production by Shop Snapshot. Comment: Start production\nline two",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Email \"Order Flow: In production (customer)\" sent.",
+        "customer_note": false,
+        "added_by": "system"
+      },
+      {
+        "content": "Email \"Order Flow: In production (admin)\" sent.",
+        "customer_note": false,
+        "added_by": "system"
+      }
+    ],
+    "history": [
+      {
+        "from": "pending",
+        "to": "awaiting-approval",
+        "user": "of-destr-admin",
+        "comment": "Initial intake",
+        "has_time": true
+      },
+      {
+        "from": "awaiting-approval",
+        "to": "in-production",
+        "user": "of-destr-admin",
+        "comment": "Skipping the approval step",
+        "has_time": true
+      },
+      {
+        "from": "in-production",
+        "to": "approved",
+        "user": "of-destr-admin",
+        "comment": "Checked & approved by QA \"ok\"",
+        "has_time": true
+      },
+      {
+        "from": "approved",
+        "to": "in-production",
+        "user": "of-destr-shopmgr",
+        "comment": "Start production\nline two",
+        "has_time": true
+      }
+    ],
+    "total": "378.80"
+  },
+  "mails": []
+}

@@ -1,0 +1,44 @@
+<div id="ofwc_documents" class="postbox "  role="region" aria-label="Order Flow documents">
+<div class="postbox-header">
+<h2 class="hndle" id="ofwc_documents-title">Order Flow documents</h2>
+<div class="handle-actions hide-if-no-js">
+<span class="wp-tooltip wp-is-tooltip">
+<button aria-label="Move up" type="button" class="handle-order-higher wp-tooltip__toggle" aria-describedby="ofwc_documents-title">
+<span class="screen-reader-text">Move up</span>
+<span class="order-higher-indicator" aria-hidden="true">
+</span>
+</button>
+<span popover="hint" id="ofwc_documents-handle-order-higher-description" class="wp-tooltip__bubble" role="tooltip">
+<span id="ofwc_documents-handle-order-higher-description-text" class="wp-tooltip__text">Move up</span>
+</span>
+</span>
+<span class="wp-tooltip wp-is-tooltip">
+<button aria-label="Move down" type="button" class="handle-order-lower wp-tooltip__toggle" aria-describedby="ofwc_documents-title">
+<span class="screen-reader-text">Move down</span>
+<span class="order-lower-indicator" aria-hidden="true">
+</span>
+</button>
+<span popover="hint" id="ofwc_documents-handle-order-lower-description" class="wp-tooltip__bubble" role="tooltip">
+<span id="ofwc_documents-handle-order-lower-description-text" class="wp-tooltip__text">Move down</span>
+</span>
+</span>
+<span class="wp-tooltip wp-is-tooltip">
+<button aria-label="Show or hide panel" type="button" class="handlediv wp-tooltip__toggle" aria-expanded="true" aria-describedby="ofwc_documents-title">
+<span class="screen-reader-text">Show or hide panel</span>
+<span class="toggle-indicator" aria-hidden="true">
+</span>
+</button>
+<span popover="hint" id="ofwc_documents-handlediv" class="wp-tooltip__bubble" role="tooltip">
+<span id="ofwc_documents-handlediv-text" class="wp-tooltip__text">Show or hide panel</span>
+</span>
+</span>
+</div>
+</div>
+<div class="inside">
+<p>
+<a href="http://localhost:8080/wp-admin/admin-post.php?action=ofwc_pdf&#038;order_id={ORDER}&#038;status=awaiting-approval&#038;_wpnonce={NONCE}" class="button" style="margin:0 6px 6px 0">Download: Awaiting approval</a>
+<a href="http://localhost:8080/wp-admin/admin-post.php?action=ofwc_pdf&#038;order_id={ORDER}&#038;status=approved&#038;_wpnonce={NONCE}" class="button" style="margin:0 6px 6px 0">Download: Approved</a>
+<a href="http://localhost:8080/wp-admin/admin-post.php?action=ofwc_pdf&#038;order_id={ORDER}&#038;status=in-production&#038;_wpnonce={NONCE}" class="button" style="margin:0 6px 6px 0">Download: In production</a>
+</p>
+</div>
+</div>

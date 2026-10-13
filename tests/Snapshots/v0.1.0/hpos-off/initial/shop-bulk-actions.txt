@@ -1,0 +1,8 @@
+-1 | Bulk actions
+trash | Move to Trash
+ofwc_to_awaiting-approval | Change status to Awaiting approval
+ofwc_to_in-production | Change status to In production
+mark_processing | Change status to processing
+mark_on-hold | Change status to on-hold
+mark_completed | Change status to completed
+mark_cancelled | Change status to cancelled

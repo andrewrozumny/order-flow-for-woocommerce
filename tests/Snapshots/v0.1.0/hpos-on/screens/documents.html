@@ -1,0 +1,37 @@
+<div class="ofwc-tab-content">
+<form method="post" action="http://localhost:8080/wp-admin/admin-post.php" class="ofwc-form">
+<input type="hidden" name="action" value="ofwc_save_documents">
+<input type="hidden" id="_wpnonce" name="_wpnonce" value="{NONCE}" />
+<input type="hidden" name="_wp_http_referer" value="/wp-admin/admin.php?page=ofwc&#038;tab=documents" />
+<p>These settings apply to every PDF document. Enable documents per status on the Statuses tab.</p>
+<table class="form-table" role="presentation">
+<tbody>
+<tr>
+<th scope="row">Logo</th>
+<td>
+<input type="hidden" name="logo_id" id="ofwc-logo-id" value="0">
+<p>
+<img id="ofwc-logo-preview" src="" alt="" style="max-width:240px;max-height:90px;display:none;">
+</p>
+<button type="button" class="button" id="ofwc-logo-pick">Choose image</button>
+<button type="button" class="button-link" id="ofwc-logo-clear">Remove</button>
+<p class="description">PNG, JPG or GIF up to 2 MB. When empty, the WooCommerce email header image is used if it is stored on this site.</p>
+</td>
+</tr>
+<tr>
+<th scope="row">
+<label for="ofwc-store-details">Store details</label>
+</th>
+<td>
+<textarea name="store_details" id="ofwc-store-details" rows="6" class="large-text">&lt;strong&gt;Acme Workshop&lt;/strong&gt;&lt;br&gt;1 Main Street&lt;br&gt;VAT 12345</textarea>
+<p class="description">Printed in the document header: company name, address, VAT number, contact. Leave empty to use the site name and the WooCommerce store address.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="description">Preview: open any order that has a document and use the Order Flow documents box, or download it from the order list. The document title and text come from the status settings.</p>
+<p class="submit">
+<input type="submit" name="submit" id="submit" class="button button-primary" value="Save settings"  />
+</p>
+</form>
+</div>

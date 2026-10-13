@@ -1,0 +1,44 @@
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Approved
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+Good news, Alice Snapshot. Order {ORDER} is approved.
+Checked & approved by QA "ok"
+
+Order #{ORDER} (January 15, 2026)
+
+==========
+
+Oak desk, 120 cm × 1 $249.00
+
+
+Desk lamp "Nordic" × 2 $79.80
+
+
+Cable tray & clips × 4 $50.00
+
+
+==========
+
+Subtotal: $378.80
+Total: $378.80
+Payment method: Direct bank transfer
+
+----------------------------------------
+
+
+BILLING ADDRESS
+
+Alice Snapshot
+Snapshot Studio
+77 Elm Road
+Suite 4
+Portland, OR 97201
+United States (US)
+555-0101
+alice.snapshot@example.test
+
+
+----------------------------------------
+
+Snapshot Store

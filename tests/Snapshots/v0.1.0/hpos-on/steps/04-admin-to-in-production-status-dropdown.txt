@@ -1,0 +1,11 @@
+wc-pending | Pending payment
+wc-processing | Processing
+wc-awaiting-approval | Awaiting approval
+wc-approved | Approved
+wc-in-production | In production
+wc-on-hold | On hold
+wc-completed | Completed
+wc-cancelled | Cancelled
+wc-refunded | Refunded
+wc-failed | Failed
+wc-checkout-draft | Draft

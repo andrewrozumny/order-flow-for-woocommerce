@@ -1,0 +1,16 @@
+{
+  "after_step": "05-admin-to-approved",
+  "to": [
+    "alice.snapshot@example.test"
+  ],
+  "cc": [],
+  "bcc": [],
+  "from": "admin@example.test",
+  "reply_to": [
+    "admin@example.test"
+  ],
+  "subject": "Order {ORDER} approved",
+  "content_type": "multipart/alternative",
+  "has_alt_body": true,
+  "attachments": []
+}

@@ -1,0 +1,60 @@
+<div class="ofwc-tab-content">
+<h2>Export</h2>
+<p>Download your statuses, transition rules and store details as a JSON file. Use it as a backup or to set up another store. The logo and orders are not included.</p>
+<form method="post" action="http://localhost:8080/wp-admin/admin-post.php">
+<input type="hidden" id="_ofwc_nonce" name="_ofwc_nonce" value="{NONCE}" />
+<input type="hidden" name="_wp_http_referer" value="/wp-admin/admin.php?page=ofwc&#038;tab=import-export" />
+<input type="hidden" name="action" value="ofwc_export">
+<input type="submit" name="ofwc_export_submit" id="ofwc_export_submit" class="button" value="Download export file"  />
+</form>
+<hr>
+<h2>Import</h2>
+<p>Upload an Order Flow export file (JSON, up to 1 MB) or paste its content.</p>
+<form method="post" enctype="multipart/form-data" action="http://localhost:8080/wp-admin/admin-post.php">
+<input type="hidden" id="_ofwc_nonce" name="_ofwc_nonce" value="{NONCE}" />
+<input type="hidden" name="_wp_http_referer" value="/wp-admin/admin.php?page=ofwc&#038;tab=import-export" />
+<input type="hidden" name="action" value="ofwc_import">
+<table class="form-table" role="presentation">
+<tbody>
+<tr>
+<th scope="row">
+<label for="ofwc-import-file">File</label>
+</th>
+<td>
+<input type="file" id="ofwc-import-file" name="ofwc_file" accept=".json,application/json">
+</td>
+</tr>
+<tr>
+<th scope="row">
+<label for="ofwc-import-text">Or paste JSON</label>
+</th>
+<td>
+<textarea id="ofwc-import-text" name="ofwc_json" rows="8" class="large-text code" spellcheck="false">
+</textarea>
+</td>
+</tr>
+<tr>
+<th scope="row">Mode</th>
+<td>
+<fieldset>
+<label>
+<input type="radio" name="mode" value="merge" checked>
+<strong>Merge</strong>
+</label>
+<br>
+<span class="description">Add new statuses and update existing ones with the same slug. Nothing is removed.</span>
+<br>
+<label>
+<input type="radio" name="mode" value="replace">
+<strong>Replace</strong>
+</label>
+<br>
+<span class="description">Like merge, and statuses that are not in the file are removed, but only when no order is in them. Transition rules are replaced by the file&#039;s rules.</span>
+</fieldset>
+</td>
+</tr>
+</tbody>
+</table>
+<input type="submit" name="ofwc_import_submit" id="ofwc_import_submit" class="button button-primary" value="Import"  />
+</form>
+</div>
