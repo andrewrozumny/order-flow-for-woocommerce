@@ -247,7 +247,14 @@ final class Deactivation {
 	 * URL that runs the next batch.
 	 */
 	private function run_url(): string {
-		return wp_nonce_url( admin_url( 'admin-post.php?action=' . self::RUN_ACTION ), self::RUN_ACTION );
+		// Raw URL (no &amp;): it is used in a Location header as well as, escaped, in HTML.
+		return add_query_arg(
+			array(
+				'action'   => self::RUN_ACTION,
+				'_wpnonce' => wp_create_nonce( self::RUN_ACTION ),
+			),
+			admin_url( 'admin-post.php' )
+		);
 	}
 
 	/**
