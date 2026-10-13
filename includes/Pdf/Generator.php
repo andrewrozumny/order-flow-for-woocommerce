@@ -35,6 +35,35 @@ final class Generator {
 	public const FONT_CACHE_DIR = 'ofwc-fonts';
 
 	/**
+	 * Seconds a PDF may take. A shorter limit of the server is raised to this, a longer one is left alone.
+	 */
+	public const TIME_LIMIT = 120;
+
+	/**
+	 * Rough memory dompdf needs for a document, measured on dompdf 3.1 with PHP 8.4 inside WordPress: it grows a little
+	 * faster than the number of order lines. A straight line through the two measured limits (370 lines in a hard
+	 * 128 MB, 710 lines in 256 MB) with 5 percent on top, a floor for short documents, plus a part per character of
+	 * the status text. The estimate refuses a document before dompdf runs out of memory, and errs on the side of
+	 * refusing: about 340 lines fit in 128 MB and 660 in 256 MB.
+	 */
+	public const MEMORY_FLOOR    = 16777216;
+	public const MEMORY_OFFSET   = 20971520;
+	public const MEMORY_PER_LINE = 420000;
+	public const MEMORY_PER_CHAR = 130;
+
+	public const FAILURE_NONE   = '';
+	public const FAILURE_TEMP   = 'temp';
+	public const FAILURE_SIZE   = 'size';
+	public const FAILURE_RENDER = 'render';
+
+	/**
+	 * Why the last render produced nothing: one of the FAILURE_ constants.
+	 *
+	 * @var string
+	 */
+	private string $failure = self::FAILURE_NONE;
+
+	/**
 	 * Status storage.
 	 *
 	 * @var Repository
@@ -139,11 +168,93 @@ final class Generator {
 	 * @return string Binary PDF, empty string when dompdf is missing or the status is unknown.
 	 */
 	public function render_pdf( WC_Order $order, string $slug ): string {
+		$this->failure = self::FAILURE_NONE;
+		$status        = $this->repository->get( $slug );
+		if ( null === $status ) {
+			return '';
+		}
+		if ( ! $this->fits_in_memory( count( $order->get_items() ), strlen( $status['pdf_text'] ) ) ) {
+			$this->failure = self::FAILURE_SIZE;
+			return '';
+		}
 		$html = $this->render_html( $order, $slug );
 		if ( '' === $html ) {
 			return '';
 		}
 		return $this->pdf_from_html( $html );
+	}
+
+	/**
+	 * Why the last render produced nothing.
+	 *
+	 * @return string One of the FAILURE_ constants, '' when nothing went wrong.
+	 */
+	public function failure(): string {
+		return $this->failure;
+	}
+
+	/**
+	 * Plain-language reason for a failed render, for the person who asked for the document.
+	 *
+	 * @param string $failure One of the FAILURE_ constants.
+	 */
+	public static function explain( string $failure ): string {
+		if ( self::FAILURE_TEMP === $failure ) {
+			return __( 'The PDF could not be created: this server has no writable temporary folder. Ask your host to make the PHP temporary directory writable, or make the uploads folder writable.', 'order-flow-for-woocommerce' );
+		}
+		if ( self::FAILURE_SIZE === $failure ) {
+			return __( 'The PDF could not be created: the order or the status text is too large for the memory this server gives PHP. Ask your host to raise memory_limit, or shorten the text of the document.', 'order-flow-for-woocommerce' );
+		}
+		return __( 'The PDF could not be created.', 'order-flow-for-woocommerce' );
+	}
+
+	/**
+	 * Memory a document of this size needs, in bytes (an estimate).
+	 *
+	 * @param int $lines Order lines.
+	 * @param int $chars Characters of the status text.
+	 */
+	public static function estimate_memory( int $lines, int $chars ): int {
+		return max( self::MEMORY_FLOOR, $lines * self::MEMORY_PER_LINE - self::MEMORY_OFFSET ) + $chars * self::MEMORY_PER_CHAR;
+	}
+
+	/**
+	 * Raise the memory limit the way wp-admin does and never lower the time limit.
+	 */
+	public static function raise_limits(): void {
+		if ( function_exists( 'wp_raise_memory_limit' ) ) {
+			wp_raise_memory_limit( 'admin' );
+		}
+		$time = (int) ini_get( 'max_execution_time' );
+		if ( $time > 0 && $time < self::TIME_LIMIT && function_exists( 'set_time_limit' ) ) {
+			set_time_limit( self::TIME_LIMIT ); // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Only ever raises the limit, for one document.
+		}
+	}
+
+	/**
+	 * Whether a document of this size is likely to fit in the memory that is left. Unlimited memory always fits.
+	 *
+	 * @param int $lines Order lines.
+	 * @param int $chars Characters of the status text.
+	 */
+	public function fits_in_memory( int $lines, int $chars ): bool {
+		self::raise_limits();
+		$limit = self::memory_limit();
+		if ( $limit <= 0 ) {
+			return true;
+		}
+		return self::estimate_memory( $lines, $chars ) <= $limit - memory_get_usage();
+	}
+
+	/**
+	 * The memory limit in bytes, 0 when there is none.
+	 */
+	public static function memory_limit(): int {
+		$raw = ini_get( 'memory_limit' );
+		if ( '' === $raw || '-1' === $raw ) {
+			return 0;
+		}
+		return function_exists( 'wp_convert_hr_to_bytes' ) ? max( 0, wp_convert_hr_to_bytes( $raw ) ) : 0;
 	}
 
 	/**
@@ -153,9 +264,16 @@ final class Generator {
 	 * @return string Binary PDF, empty when dompdf is not available.
 	 */
 	public function pdf_from_html( string $html ): string {
+		$this->failure = self::FAILURE_NONE;
 		if ( ! Libraries::load() ) {
 			return '';
 		}
+		$temp = ( new TempDirectory() )->path();
+		if ( '' === $temp ) {
+			$this->failure = self::FAILURE_TEMP;
+			return '';
+		}
+		self::raise_limits();
 
 		$uploads = wp_upload_dir();
 		$base    = $uploads['basedir'];
@@ -169,16 +287,22 @@ final class Generator {
 		$options->set( 'isPhpEnabled', false );
 		$options->set( 'chroot', $chroot );
 		$options->set( 'defaultFont', 'DejaVu Sans' );
+		$options->set( 'tempDir', $temp );
 		$cache = $this->font_cache_dir( $base );
 		if ( '' !== $cache ) {
 			$options->set( 'fontCache', $cache );
 		}
 
-		$dompdf = new Dompdf( $options );
-		$dompdf->setPaper( 'A4', 'portrait' );
-		$dompdf->loadHtml( $html, 'UTF-8' );
-		$dompdf->render();
-		return $dompdf->output();
+		try {
+			$dompdf = new Dompdf( $options );
+			$dompdf->setPaper( 'A4', 'portrait' );
+			$dompdf->loadHtml( $html, 'UTF-8' );
+			$dompdf->render();
+			return $dompdf->output();
+		} catch ( \Throwable $e ) {
+			$this->failure = self::FAILURE_RENDER;
+			return '';
+		}
 	}
 
 	/**

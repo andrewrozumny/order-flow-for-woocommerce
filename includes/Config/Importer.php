@@ -24,6 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   Transition rules from the file are merged into the existing ones (same from and to: the file wins).
  * - replace: as merge, and statuses missing from the file are removed, but only when no order is in
  *   them; otherwise they stay and are reported. Transition rules are replaced by the file's.
+ *   A section the file does not contain (statuses or transitions) is not touched.
  *
  * Every status passes Repository::sanitize() and validate(), every rule passes Rules::sanitize().
  * Importing the same file twice changes nothing.
@@ -100,11 +101,16 @@ final class Importer {
 			$this->import_status( $row, $index, $result, $in_file );
 		}
 
-		if ( $replace ) {
+		// A section the file does not have is left alone, replace mode or not.
+		if ( $replace && isset( $data['statuses'] ) ) {
 			$this->remove_missing( $in_file, $result );
 		}
 
-		$this->import_transitions( isset( $data['transitions'] ) && is_array( $data['transitions'] ) ? $data['transitions'] : array(), $replace, $result );
+		if ( isset( $data['transitions'] ) && is_array( $data['transitions'] ) ) {
+			$this->import_transitions( $data['transitions'], $replace, $result );
+		} else {
+			$result->rules_saved = count( $this->rules->all() );
+		}
 
 		if ( isset( $data['settings'] ) && is_array( $data['settings'] ) && isset( $data['settings']['store_details'] ) && is_string( $data['settings']['store_details'] ) ) {
 			$this->import_settings( $data['settings']['store_details'], $replace, $result );
@@ -273,7 +279,15 @@ final class Importer {
 		}
 		$settings = get_option( 'ofwc_settings', array() );
 		$settings = is_array( $settings ) ? $settings : array();
-		$clean    = wp_kses_post( $details );
+		if ( mb_strlen( $details ) > Repository::MAX_LONG_TEXT ) {
+			$result->skipped['store_details'] = sprintf(
+				/* translators: %s: maximum number of characters. */
+				__( 'too long, the maximum is %s characters', 'order-flow-for-woocommerce' ),
+				number_format_i18n( Repository::MAX_LONG_TEXT )
+			);
+			return;
+		}
+		$clean = wp_kses_post( $details );
 		if ( ( $settings['store_details'] ?? '' ) === $clean ) {
 			return;
 		}

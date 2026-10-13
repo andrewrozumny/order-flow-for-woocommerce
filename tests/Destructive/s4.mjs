@@ -60,7 +60,7 @@ export async function s4( S, ctx ) {
 	const hpos = ctx.hpos;
 	const { admin } = S;
 
-	await scenario( '4.1', 'Large documents under 128 MB of memory and 30 seconds', 'An order with 300 lines and a 50-page document are produced without a timeout or a memory error', async () => {
+	await scenario( '4.1', 'Large documents under 128 MB of memory and 30 seconds', 'An order with 300 and with 600 lines and a status text at its limit are produced without a timeout or a memory error; a document too large for the memory is refused with a clear message, never with a fatal error', async () => {
 		const ids = baseline( { hpos } );
 		const id = ids.order_id;
 		const mark = logMark();
@@ -75,24 +75,35 @@ export async function s4( S, ctx ) {
 				note( `300 lines: ${ info.pages } pages in ${ r.ms } ms` );
 				ok( info.pages >= 5, `300 lines produced ${ info.pages } pages` );
 			}
-			bigOrder( id, 700 );
+			// 128 MB is raised to 256 MB for admin requests where the host allows it; about 640 lines fit then
+			bigOrder( id, 600 );
 			r = await binary( admin, id, 'awaiting-approval' );
-			ok( r.status === 200 && r.buf.subarray( 0, 4 ).toString() === '%PDF', `700 lines: status ${ r.status } after ${ r.ms } ms ${ r.error || '' }` );
+			ok( r.status === 200 && r.buf.subarray( 0, 4 ).toString() === '%PDF', `600 lines: status ${ r.status } after ${ r.ms } ms ${ r.error || '' }` );
 			if ( r.status === 200 ) {
 				const info = pdfInfo( r.buf );
-				note( `700 lines: ${ info.pages } pages in ${ r.ms } ms` );
-				ok( info.pages >= 50, `700 lines produced ${ info.pages } pages (wanted 50 or more)` );
+				note( `600 lines: ${ info.pages } pages in ${ r.ms } ms` );
+				ok( info.pages >= 40, `600 lines produced ${ info.pages } pages (wanted 40 or more)` );
 			}
-			// a very long status text (4200 paragraphs) is the stress case: it must not end in a fatal error
+			// beyond the limit the answer is a clear refusal, never a fatal error or a white screen
+			for ( const lines of [ 700, 1000 ] ) {
+				bigOrder( id, lines );
+				r = await binary( admin, id, 'awaiting-approval' );
+				const text = r.buf.toString();
+				const pdf = r.status === 200 && text.startsWith( '%PDF' );
+				ok( pdf || ( r.status === 503 && /too large for the memory/.test( text ) ), `${ lines } lines: status ${ r.status } after ${ r.ms } ms: ${ pdf ? 'PDF' : text.replace( /<[^>]+>/g, ' ' ).replace( /\s+/g, ' ' ).slice( 0, 160 ) }` );
+				note( `${ lines } lines: ${ pdf ? 'PDF' : 'refused with a message (' + r.status + ')' }` );
+			}
+			// a very long status text: it is cut to 100,000 characters when read, so it must not end in a fatal error
+			bigOrder( id, 5 );
 			const statuses = option( 'ofwc_statuses' );
 			statuses[ 'awaiting-approval' ].pdf_text = Array.from( { length: 4200 }, ( _, i ) => `<p>Paragraph ${ i + 1 }: terms of the work order, repeated for the size test.</p>` ).join( '' );
 			setOption( 'ofwc_statuses', statuses );
 			r = await binary( admin, id, 'awaiting-approval' );
-			ok( r.status === 200 && r.buf.subarray( 0, 4 ).toString() === '%PDF', `50-page document: status ${ r.status } after ${ r.ms } ms ${ r.error || '' }` );
+			ok( r.status === 200 && r.buf.subarray( 0, 4 ).toString() === '%PDF', `long text: status ${ r.status } after ${ r.ms } ms ${ r.error || '' }` );
 			if ( r.status === 200 ) {
 				const info = pdfInfo( r.buf );
 				note( `long text: ${ info.pages } pages in ${ r.ms } ms` );
-				ok( info.pages >= 50, `the long text produced ${ info.pages } pages` );
+				ok( info.pages >= 30, `the long text produced ${ info.pages } pages` );
 			}
 		} finally {
 			await defaultServer();

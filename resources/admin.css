@@ -17,3 +17,6 @@
 .ofwc-wrap .ofwc-flag-deleting { background: #fcf0f1; color: #8a2424; }
 .ofwc-wrap .ofwc-logo-preview { max-width: 240px; max-height: 90px; }
 .ofwc-wrap .ofwc-logo-preview[hidden] { display: none; }
+.ofwc-wrap .ofwc-counts { max-width: 480px; }
+.ofwc-wrap .ofwc-choice { margin: 1.5em 0; }
+.ofwc-wrap .ofwc-choice-note { margin-left: 24px; display: inline-block; }

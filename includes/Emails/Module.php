@@ -64,7 +64,18 @@ final class Module {
 		if ( ! is_array( $emails ) ) {
 			return $emails;
 		}
-		foreach ( $this->repository->all() as $status ) {
+		$statuses = $this->repository->all();
+		// The settings row of every email is read by WooCommerce when the email is built; read them all in one query.
+		$names = array();
+		foreach ( $statuses as $status ) {
+			foreach ( array( 'customer', 'admin' ) as $type ) {
+				$names[] = 'woocommerce_' . StatusEmail::email_id( $status['slug'], $type ) . '_settings';
+			}
+		}
+		if ( array() !== $names && function_exists( 'wp_prime_option_caches' ) ) {
+			wp_prime_option_caches( $names );
+		}
+		foreach ( $statuses as $status ) {
 			foreach ( array( 'customer', 'admin' ) as $type ) {
 				$email = new StatusEmail( $status, $type );
 				$emails[ StatusEmail::email_id( $status['slug'], $type ) ] = $email;

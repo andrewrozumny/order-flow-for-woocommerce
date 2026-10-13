@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Pdf;
 
+use OrderFlowWC\History\History;
 use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Statuses\Slug;
 use WC_Order;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -51,7 +53,7 @@ final class Documents {
 	public function available( WC_Order $order ): array {
 		$seen = array( $this->normalize( $order->get_status() ) => true );
 
-		$history = $order->get_meta( '_ofwc_history' );
+		$history = $order->get_meta( History::META_KEY );
 		if ( is_array( $history ) ) {
 			foreach ( $history as $entry ) {
 				if ( ! is_array( $entry ) ) {
@@ -135,6 +137,6 @@ final class Documents {
 	 * @param string $status Status key.
 	 */
 	private function normalize( string $status ): string {
-		return 0 === strpos( $status, 'wc-' ) ? substr( $status, 3 ) : $status;
+		return Slug::strip( $status );
 	}
 }

@@ -11,6 +11,7 @@ namespace OrderFlowWC\Tests\Unit\Migration;
 
 use Brain\Monkey\Functions;
 use OrderFlowWC\Migration\Deletions;
+use OrderFlowWC\Migration\Memory;
 use OrderFlowWC\Statuses\Repository;
 use OrderFlowWC\Tests\Unit\TestCase;
 use WP_Error;
@@ -154,6 +155,50 @@ final class DeletionsTest extends TestCase {
 		$this->assertSame( array(), $this->options['ofwc_transitions'], 'rules that mention the status go with it' );
 		$this->assertFalse( $del->is_deleting( 'rv-await' ) );
 		$this->assertSame( 'Order Flow: the previous status was deleted.', FakeShop::$orders[1]['notes'][0] );
+	}
+
+	/**
+	 * A batch stops when the memory is used up, leaves the status in place and every order in the old or the new status.
+	 */
+	public function test_batch_stops_when_memory_is_low(): void {
+		FakeShop::add( 40, 'rv-await' );
+		list( , $del ) = $this->pair();
+		$del->start( 'rv-await', 'completed', false );
+		$calls         = 0;
+		Memory::$probe = static function () use ( &$calls ): array {
+			++$calls;
+			return array( $calls > 10 ? 70 : 10, 100 ); // Over 60 percent after ten looks.
+		};
+		try {
+			$result = $del->run( 'rv-await', 1000.0 );
+		} finally {
+			Memory::$probe = null;
+		}
+
+		$this->assertFalse( $result['done'] );
+		$this->assertNull( $result['error'] );
+		$this->assertGreaterThan( 0, $result['moved'] );
+		$this->assertLessThan( 40, $result['moved'] );
+		$this->assertTrue( $del->is_deleting( 'rv-await' ) );
+	}
+
+	/**
+	 * Deleting a status with orders queues the next batch before it moves the first order.
+	 */
+	public function test_next_batch_is_queued_before_the_work(): void {
+		FakeShop::add( 5, 'rv-await' );
+		$order_of_events = array();
+		Functions\when( 'wp_schedule_single_event' )->alias(
+			static function () use ( &$order_of_events ): bool {
+				$order_of_events[] = 'queued:' . count( array_filter( FakeShop::$orders, static fn( $o ) => 'completed' === $o['status'] ) );
+				return true;
+			}
+		);
+		$repo = new Repository();
+
+		$repo->delete( 'rv-await', 'completed' );
+
+		$this->assertSame( array( 'queued:0' ), $order_of_events );
 	}
 
 	/**

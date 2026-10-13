@@ -5,6 +5,8 @@
  * @package OrderFlowWC
  */
 
+// phpcs:disable WordPress.WP.AlternativeFunctions -- The tests work on a scratch folder with plain PHP file functions.
+
 declare(strict_types=1);
 
 namespace OrderFlowWC\Tests\Unit\Pdf;
@@ -23,21 +25,105 @@ use Smalot\PdfParser\Parser;
 final class GeneratorTest extends TestCase {
 
 	/**
-	 * HTML becomes a PDF whose text contains the order number.
+	 * Stub the folder helpers: where the system temporary folder and uploads are.
+	 *
+	 * @param string $temp    System temporary folder.
+	 * @param string $uploads Uploads base folder.
 	 */
-	public function test_pdf_from_html_contains_text(): void {
+	private function stub_paths( string $temp, string $uploads ): void {
 		Functions\when( 'wp_upload_dir' )->justReturn(
 			array(
-				'basedir' => sys_get_temp_dir(),
+				'basedir' => $uploads,
 				'baseurl' => 'https://example.test/uploads',
 			)
 		);
-		Functions\when( 'wp_mkdir_p' )->alias( 'is_dir' );
+		Functions\when( 'get_temp_dir' )->justReturn( $temp . '/' );
+		Functions\when( 'wp_mkdir_p' )->alias(
+			static function ( string $dir ): bool {
+				return is_dir( $dir ) || @mkdir( $dir, 0777, true ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- An unwritable parent is the point of the test.
+			}
+		);
+		Functions\when( 'wp_is_writable' )->alias( 'is_writable' );
+		Functions\when( 'untrailingslashit' )->alias(
+			static function ( string $value ): string {
+				return rtrim( $value, '/' );
+			}
+		);
 		Functions\when( 'trailingslashit' )->alias(
 			static function ( string $value ): string {
 				return rtrim( $value, '/' ) . '/';
 			}
 		);
+	}
+
+	/**
+	 * Without any usable temporary folder there is no fatal error: no PDF, and the reason is "temp".
+	 */
+	public function test_no_usable_temp_folder_is_a_clean_failure(): void {
+		$this->stub_paths( '/nonexistent-tmp-a', '/nonexistent-tmp-b' );
+		$generator = new Generator();
+
+		$this->assertSame( '', $generator->pdf_from_html( '<html><body><p>x</p></body></html>' ) );
+		$this->assertSame( Generator::FAILURE_TEMP, $generator->failure() );
+	}
+
+	/**
+	 * The temporary folder falls back to uploads when the system one is unusable, and the PDF is made.
+	 */
+	public function test_temp_folder_falls_back_to_uploads(): void {
+		$uploads = sys_get_temp_dir() . '/ofwc-gen-' . bin2hex( random_bytes( 4 ) );
+		mkdir( $uploads, 0777, true );
+		$this->stub_paths( '/nonexistent-tmp-a', $uploads );
+
+		$pdf = ( new Generator() )->pdf_from_html( '<html><body><p>Fallback OF-9</p></body></html>' );
+
+		$this->assertStringStartsWith( '%PDF', $pdf );
+		$this->assertDirectoryExists( $uploads . '/ofwc-tmp' );
+		foreach ( array( 'index.php', '.htaccess' ) as $file ) {
+			@unlink( $uploads . '/ofwc-tmp/' . $file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.WP.AlternativeFunctions.unlink_unlink -- Scratch folder.
+		}
+		@rmdir( $uploads . '/ofwc-tmp' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.WP.AlternativeFunctions.rmdir_rmdir -- Scratch folder.
+		@rmdir( $uploads ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.WP.AlternativeFunctions.rmdir_rmdir -- Scratch folder.
+	}
+
+	/**
+	 * The estimate grows with lines and text, and a huge document does not fit a small memory limit.
+	 */
+	public function test_memory_estimate_refuses_what_cannot_fit(): void {
+		$this->assertGreaterThan( Generator::estimate_memory( 10, 0 ), Generator::estimate_memory( 700, 0 ) );
+		$this->assertGreaterThan( Generator::estimate_memory( 10, 0 ), Generator::estimate_memory( 10, 400000 ) );
+
+		$old = (string) ini_get( 'memory_limit' );
+		ini_set( 'memory_limit', '1024M' ); // phpcs:ignore WordPress.PHP.IniSet.memory_limit_Disallowed -- Test of the memory estimate.
+		Functions\when( 'wp_convert_hr_to_bytes' )->justReturn( 1073741824 );
+		try {
+			$generator = new Generator();
+			$this->assertTrue( $generator->fits_in_memory( 10, 1000 ) );
+			$this->assertFalse( $generator->fits_in_memory( 5000, 0 ) );
+		} finally {
+			ini_set( 'memory_limit', $old ); // phpcs:ignore WordPress.PHP.IniSet.memory_limit_Disallowed -- Restore.
+		}
+	}
+
+	/**
+	 * The time limit is only ever raised.
+	 */
+	public function test_time_limit_is_never_lowered(): void {
+		$before = (string) ini_get( 'max_execution_time' );
+		ini_set( 'max_execution_time', '300' ); // phpcs:ignore WordPress.PHP.IniSet.max_execution_time_Disallowed -- Test of the time limit.
+		try {
+			Generator::raise_limits();
+			$this->assertSame( '300', (string) ini_get( 'max_execution_time' ) );
+		} finally {
+			ini_set( 'max_execution_time', $before ); // phpcs:ignore WordPress.PHP.IniSet.max_execution_time_Disallowed -- Restore.
+		}
+	}
+
+	/**
+	 * HTML becomes a PDF whose text contains the order number.
+	 */
+	public function test_pdf_from_html_contains_text(): void {
+		$this->stub_paths( sys_get_temp_dir(), sys_get_temp_dir() );
 
 		$pdf = ( new Generator() )->pdf_from_html( '<html><body><h1>Approval sheet</h1><p>Order #OF-1042 for Zoe Ünal</p></body></html>' );
 
@@ -57,18 +143,7 @@ final class GeneratorTest extends TestCase {
 	public function test_foreign_dompdf_in_process_is_not_used(): void {
 		// phpcs:ignore Squiz.PHP.Eval.Discouraged -- Declares a stand-in for another plugin's older dompdf.
 		eval( 'namespace Dompdf; class Dompdf { const VERSION = "0.8.0"; public function __construct() { throw new \\RuntimeException( "foreign dompdf used" ); } } class Options { public function __construct() { throw new \\RuntimeException( "foreign options used" ); } }' );
-		Functions\when( 'wp_upload_dir' )->justReturn(
-			array(
-				'basedir' => sys_get_temp_dir(),
-				'baseurl' => 'https://example.test/uploads',
-			)
-		);
-		Functions\when( 'wp_mkdir_p' )->alias( 'is_dir' );
-		Functions\when( 'trailingslashit' )->alias(
-			static function ( string $value ): string {
-				return rtrim( $value, '/' ) . '/';
-			}
-		);
+		$this->stub_paths( sys_get_temp_dir(), sys_get_temp_dir() );
 
 		$pdf = ( new Generator() )->pdf_from_html( '<html><body><p>Bundled copy OF-7</p></body></html>' );
 

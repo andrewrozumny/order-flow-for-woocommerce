@@ -207,4 +207,41 @@ final class RegistrarTest extends TestCase {
 		$repo = new Repository();
 		$this->assertSame( array( 'proof', 'packed' ), array_keys( $repo->all() ) );
 	}
+
+	/**
+	 * The post statuses are registered at init priority 0, before WooCommerce and before the usual priority 10.
+	 */
+	public function test_post_statuses_are_registered_at_the_start_of_init(): void {
+		( new Registrar() )->register();
+
+		$this->assertSame( 0, has_action( 'init', array( new Registrar(), 'register_post_statuses' ) ) );
+	}
+
+	/**
+	 * An order saved before the statuses were registered (an early hook of another plugin) would be stored as
+	 * "proof" instead of "wc-proof". The status is registered on the spot.
+	 */
+	public function test_status_is_registered_before_an_early_save(): void {
+		Functions\when( 'get_post_status_object' )->justReturn( null );
+		Functions\expect( 'register_post_status' )->once()->with( 'wc-proof', \Mockery::on( static fn( $args ): bool => is_array( $args ) && 'Awaiting proof' === $args['label'] ) );
+		$order = \Mockery::mock( \WC_Order::class );
+		$order->shouldReceive( 'get_status' )->with( 'edit' )->andReturn( 'proof' );
+
+		( new Registrar() )->ensure_registered( $order );
+	}
+
+	/**
+	 * Nothing is registered twice, and statuses that are not ours are left alone.
+	 */
+	public function test_registered_and_foreign_statuses_are_left_alone(): void {
+		Functions\when( 'get_post_status_object' )->alias( static fn( string $status ) => 'wc-processing' === $status || 'wc-proof' === $status ? (object) array() : null );
+		Functions\expect( 'register_post_status' )->never();
+
+		foreach ( array( 'proof', 'processing', 'someone-elses' ) as $status ) {
+			$order = \Mockery::mock( \WC_Order::class );
+			$order->shouldReceive( 'get_status' )->with( 'edit' )->andReturn( $status );
+			( new Registrar() )->ensure_registered( $order );
+		}
+		$this->assertTrue( true );
+	}
 }

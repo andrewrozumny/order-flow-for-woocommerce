@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OrderFlowWC\Admin;
 
 use OrderFlowWC\Placeholders;
+use OrderFlowWC\Statuses\Icons;
 use OrderFlowWC\Statuses\Repository;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -110,7 +111,7 @@ final class StatusForm {
 
 		$this->row_start( '', __( 'Icon', 'order-flow-for-woocommerce' ) );
 		echo '<fieldset class="ofwc-icons"><legend class="screen-reader-text">' . esc_html__( 'Icon', 'order-flow-for-woocommerce' ) . '</legend>';
-		foreach ( Repository::icons() as $class => $name ) {
+		foreach ( Icons::all() as $class => $name ) {
 			printf(
 				'<label title="%1$s"><input type="radio" name="icon" value="%2$s"%3$s><span class="dashicons %2$s"></span><span class="screen-reader-text">%1$s</span></label>',
 				esc_attr( $name ),

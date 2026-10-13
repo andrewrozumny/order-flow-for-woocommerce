@@ -42,17 +42,19 @@ The plugin works with High-Performance Order Storage (HPOS) and uses only the Wo
 * Reduce stock when an order enters the status.
 * Show to the customer in My Account under its own name, or as "Processing" when it is an internal step. The customer sees "Processing" on the shop pages, in the REST and Store APIs and in the emails sent to the customer. People who can edit orders see the real label. The status slug itself is not hidden in API responses.
 * Registered as real WooCommerce order statuses, so they work in filters, reports and bulk actions.
+* Texts have a length limit so the settings stay small: 2,000 characters for the label, the email subject and heading and the document title; 100,000 characters for the email text, the document text and the store details. A longer text is refused with a message that names the field.
 
 *Transition rules*
 
 * A matrix of "from > to" with the roles allowed to make each move and an optional required comment.
 * Transitions between WooCommerce's own statuses are not restricted.
-* A move into or out of a custom status needs a matching rule for the user's role. Administrators (users with the manage_options capability) can always make any change, so the rules control shop managers and other roles.
+* A move into or out of a custom status needs a matching rule for the user's role. Administrators (users with the manage_options capability) can always make any change, so the role limits control shop managers and other roles. A transition marked "comment required" is different: it needs the comment from everybody, administrators included.
 * Creating a new order straight into a custom status is a move too: it is checked like a move out of "new".
 * Where the rules apply: every status change a logged-in person makes in the browser. That is the Order Flow box, the status dropdown on the order screen, the bulk actions (WooCommerce's own "Change status to ..." as well as the Order Flow ones), the status buttons in the order list and in the preview window, a new order created in wp-admin, and the REST API when it is used from the browser with the login cookie. A change that is refused leaves the order in its old status and shows a notice. Buttons and bulk actions that cannot be used are not shown.
 * Where the rules do not apply: payment gateways and webhooks, cron and Action Scheduler, WP-CLI, REST requests that authenticate with an API key or an application password, and the plugin's own work (parking and restoring orders, deleting a status).
 * A full refund moves the order to Refunded whatever the rules say. The money is already back with the customer by then.
 * Bulk actions skip orders whose transition needs a comment and tell you which ones.
+* One change at a time: while a person changes an order, a second change of the same order made at that moment waits a few seconds and is then checked against the new status. A repeated click or a second tab cannot send the same email twice or leave the status and the history disagreeing.
 
 *History*
 
@@ -148,13 +150,21 @@ It depends on how you deactivate it. Orders are never deleted.
 
 Orders that are still in one of its statuses are moved to On hold, with the old status saved in the order meta and a note on the order, so they stay visible in WooCommerce. No emails are sent and stock does not change. The plugin then removes its options, temporary files, font cache and scheduled tasks. The history of each order (order notes and the history meta) stays, because it is data of your shop. The plugin's settings and statuses are gone, so export the configuration first if you want to keep it.
 
+= How large can a PDF document be? =
+
+It depends on the memory PHP gives the request. WordPress raises the limit of an admin request to 256 MB where the host allows it. Measured with WordPress 7.1 and PHP 8.4: with 256 MB an order with about 640 lines (46 pages) is made, with a hard limit of 128 MB about 330 lines (24 pages). The status text, at its limit of 100,000 characters, adds up to about 40 pages and fits in 128 MB. A document that would not fit is not attempted: the download page says that the order or the text is too large for the memory of the server and what to do (ask the host to raise `memory_limit`, or shorten the text), and a status email goes out without the PDF with a note on the order. The estimate errs on the side of refusing, so the server does not run out of memory half way through.
+
+= Is the history safe when two changes happen at the same moment? =
+
+The history of an order is stored as one list in the order's meta data, so two writers that save the same order at the very same moment can overwrite each other's row. For changes made through Order Flow (its box, its buttons, the bulk actions) this cannot happen: one change at a time is let through for an order. A payment gateway, an import or another plugin that changes the same order in the same second is outside Order Flow's control; WooCommerce itself does not lock orders either. The status change itself is never lost, only a history row can be.
+
 = Where do the temporary PDF files go? =
 
 A PDF attached to an email is written to the temporary folder of your server (outside the web root) and deleted as soon as the email has been sent or has failed. If that folder is not writable, `uploads/ofwc-tmp` is used and protected against direct access. Anything older than a day is removed by a daily task. If no folder can be written, the email is sent without the PDF and a note on the order says why. The font cache of the PDF library lives in `uploads/ofwc-fonts`.
 
 = Can I limit what shop managers can do? =
 
-Yes. In the Transitions tab you choose, for each "from > to" move, which roles may make it, and you can require a comment. Administrators can always make any change. The rules apply to every change a logged-in person makes in the browser: the order screen, bulk actions, the buttons in the order list, new orders and the REST API with the login cookie. They do not apply to payment gateways, webhooks, cron, WP-CLI, API keys and application passwords, and not to a full refund that moves the order to Refunded. Shop managers cannot change the statuses or the rules themselves: that needs the manage_options capability.
+Yes. In the Transitions tab you choose, for each "from > to" move, which roles may make it, and you can require a comment. Administrators can make any change, but a required comment applies to them too. The rules apply to every change a logged-in person makes in the browser: the order screen, bulk actions, the buttons in the order list, new orders and the REST API with the login cookie. They do not apply to payment gateways, webhooks, cron, WP-CLI, API keys and application passwords, and not to a full refund that moves the order to Refunded. Shop managers cannot change the statuses or the rules themselves: that needs the manage_options capability.
 
 = Does the customer see my comment? =
 

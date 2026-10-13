@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Statuses;
 
+use OrderFlowWC\Value;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -55,7 +57,9 @@ final class Registrar {
 	 * Register hooks.
 	 */
 	public function register(): void {
-		add_action( 'init', array( $this, 'register_post_statuses' ) );
+		// Priority 0: before WooCommerce (5) and before the usual priority 10 of other plugins, which may save orders.
+		add_action( 'init', array( $this, 'register_post_statuses' ), 0 );
+		add_action( 'woocommerce_before_order_object_save', array( $this, 'ensure_registered' ), 1 );
 		add_filter( 'wc_order_statuses', array( $this, 'filter_order_statuses' ) );
 		add_filter( 'woocommerce_reports_order_statuses', array( $this, 'filter_reports_statuses' ) );
 		add_filter( 'woocommerce_analytics_excluded_order_statuses', array( $this, 'filter_analytics_excluded_statuses' ) );
@@ -69,30 +73,62 @@ final class Registrar {
 	 */
 	public function register_post_statuses(): void {
 		foreach ( $this->repository->all() as $status ) {
-			$slug  = $status['slug'];
-			$label = $status['label'];
-			// Same shape as _n_noop(); the label is user-defined data, not a translatable string.
-			$count = str_replace( '%', '%%', $label ) . ' <span class="count">(%s)</span>';
-
-			register_post_status(
-				Slug::prefixed( $slug ),
-				array(
-					'label'                     => $label,
-					'public'                    => false,
-					'exclude_from_search'       => false,
-					'show_in_admin_all_list'    => true,
-					'show_in_admin_status_list' => true,
-					'label_count'               => array(
-						0          => $count,
-						1          => $count,
-						'singular' => $count,
-						'plural'   => $count,
-						'context'  => null,
-						'domain'   => null,
-					),
-				)
-			);
+			$this->register_status( $status['slug'], $status['label'] );
 		}
+	}
+
+	/**
+	 * Before an order is saved: make sure its status is a registered post status.
+	 *
+	 * WooCommerce stores `wc-slug` only for a status WordPress knows; for an unknown one it stores the bare slug, and the
+	 * order then belongs to no list. A save that runs before `init` (another plugin, an early hook) would do that, so the
+	 * status is registered on the spot, from the stored option (no translation functions run this early).
+	 *
+	 * @param mixed $order Order about to be saved.
+	 */
+	public function ensure_registered( $order ): void {
+		if ( ! $order instanceof \WC_Order ) {
+			return;
+		}
+		$slug = Slug::strip( $order->get_status( 'edit' ) );
+		if ( '' === $slug || null !== get_post_status_object( Slug::prefixed( $slug ) ) ) {
+			return;
+		}
+		$stored = get_option( Repository::OPTION, array() );
+		$row    = is_array( $stored ) && isset( $stored[ $slug ] ) && is_array( $stored[ $slug ] ) ? $stored[ $slug ] : null;
+		if ( null !== $row ) {
+			$this->register_status( $slug, Value::string( $row['label'] ?? '', $slug ) );
+		}
+	}
+
+	/**
+	 * Register one status as the post status `wc-{slug}`.
+	 *
+	 * @param string $slug  Slug without the wc- prefix.
+	 * @param string $label Label.
+	 */
+	private function register_status( string $slug, string $label ): void {
+		// Same shape as _n_noop(); the label is user-defined data, not a translatable string.
+		$count = str_replace( '%', '%%', $label ) . ' <span class="count">(%s)</span>';
+
+		register_post_status(
+			Slug::prefixed( $slug ),
+			array(
+				'label'                     => $label,
+				'public'                    => false,
+				'exclude_from_search'       => false,
+				'show_in_admin_all_list'    => true,
+				'show_in_admin_status_list' => true,
+				'label_count'               => array(
+					0          => $count,
+					1          => $count,
+					'singular' => $count,
+					'plural'   => $count,
+					'context'  => null,
+					'domain'   => null,
+				),
+			)
+		);
 	}
 
 	/**

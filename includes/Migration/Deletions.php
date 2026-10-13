@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OrderFlowWC\Migration;
 
 use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Statuses\Slug;
 use OrderFlowWC\Value;
 use WP_Error;
 
@@ -128,33 +129,51 @@ final class Deletions {
 	public function run( string $slug, ?float $budget = null ): array {
 		$pending = $this->pending();
 		if ( ! isset( $pending[ $slug ] ) ) {
-			return array(
-				'done'      => false,
-				'moved'     => 0,
-				'remaining' => 0,
-				'error'     => new WP_Error( 'ofwc_status_missing', __( 'This status is not being deleted.', 'order-flow-for-woocommerce' ) ),
-			);
+			return $this->outcome( false, 0, 0, new WP_Error( 'ofwc_status_missing', __( 'This status is not being deleted.', 'order-flow-for-woocommerce' ) ) );
 		}
-		$state    = $pending[ $slug ];
-		$deadline = $this->now() + ( $budget ?? $this->budget() );
-		$moved    = 0;
-		$failed   = $state['failed'];
-		$out_of_t = false;
+		$state = $pending[ $slug ];
+		$work  = $this->move_orders( $slug, $state, $this->now() + ( $budget ?? $this->budget() ) );
+
+		$state['moved'] += $work['moved'];
+		$state['failed'] = $work['failed'];
+		$remaining       = $this->repository->count_orders( $slug );
+
+		if ( $work['out_of_time'] && $remaining > count( $work['failed'] ) ) {
+			$this->save_state( $slug, $state );
+			return $this->outcome( false, $work['moved'], $remaining, null );
+		}
+		$this->clear( $slug );
+		if ( $remaining > 0 ) {
+			return $this->outcome( false, $work['moved'], $remaining, new WP_Error( 'ofwc_move_failed', __( 'Some orders could not be moved to the target status. The status was not deleted.', 'order-flow-for-woocommerce' ) ) );
+		}
+		$this->repository->remove( $slug );
+		return $this->outcome( true, $work['moved'], 0, null );
+	}
+
+	/**
+	 * Move the orders of a status to the target until none are left or the time is up.
+	 *
+	 * @param string               $slug     Status slug.
+	 * @param array<string, mixed> $state    Deletion in progress.
+	 * @phpstan-param Pending $state
+	 * @param float                $deadline Time to stop at, in seconds on the clock.
+	 * @return array{moved: int, failed: int[], out_of_time: bool}
+	 */
+	private function move_orders( string $slug, array $state, float $deadline ): array {
+		$moved       = 0;
+		$failed      = $state['failed'];
+		$out_of_time = false;
 
 		Isolation::run(
-			function () use ( $slug, $state, $deadline, &$moved, &$failed, &$out_of_t ): void {
+			function () use ( $slug, $state, $deadline, &$moved, &$failed, &$out_of_time ): void {
 				while ( true ) {
-					if ( $this->expired( $deadline ) ) {
-						$out_of_t = true;
-						return;
-					}
-					$ids = $this->ids( 'wc-' . $slug, $failed );
+					$ids = $this->ids( Slug::prefixed( $slug ), $failed );
 					if ( array() === $ids ) {
 						return;
 					}
 					foreach ( $ids as $order_id ) {
 						if ( $this->expired( $deadline ) ) {
-							$out_of_t = true;
+							$out_of_time = true;
 							return;
 						}
 						if ( $this->move_order( $order_id, $state['target'] ) ) {
@@ -162,6 +181,7 @@ final class Deletions {
 						} else {
 							$failed[] = $order_id;
 						}
+						Memory::relax();
 					}
 				}
 			},
@@ -169,35 +189,28 @@ final class Deletions {
 			! $state['notify']
 		);
 
-		$state['moved'] += $moved;
-		$state['failed'] = $failed;
-		$remaining       = $this->repository->count_orders( $slug );
-
-		if ( $out_of_t && $remaining > count( $failed ) ) {
-			$this->save_state( $slug, $state );
-			return array(
-				'done'      => false,
-				'moved'     => $moved,
-				'remaining' => $remaining,
-				'error'     => null,
-			);
-		}
-		if ( $remaining > 0 ) {
-			$this->clear( $slug );
-			return array(
-				'done'      => false,
-				'moved'     => $moved,
-				'remaining' => $remaining,
-				'error'     => new WP_Error( 'ofwc_move_failed', __( 'Some orders could not be moved to the target status. The status was not deleted.', 'order-flow-for-woocommerce' ) ),
-			);
-		}
-		$this->clear( $slug );
-		$this->repository->remove( $slug );
 		return array(
-			'done'      => true,
+			'moved'       => $moved,
+			'failed'      => $failed,
+			'out_of_time' => $out_of_time,
+		);
+	}
+
+	/**
+	 * The result of one run.
+	 *
+	 * @param bool          $done      Whether the status is gone.
+	 * @param int           $moved     Orders moved in this run.
+	 * @param int           $remaining Orders still in the status.
+	 * @param WP_Error|null $error     Reason the deletion stopped, if it did.
+	 * @return Outcome
+	 */
+	private function outcome( bool $done, int $moved, int $remaining, ?WP_Error $error ): array {
+		return array(
+			'done'      => $done,
 			'moved'     => $moved,
-			'remaining' => 0,
-			'error'     => null,
+			'remaining' => $remaining,
+			'error'     => $error,
 		);
 	}
 
@@ -223,10 +236,11 @@ final class Deletions {
 		if ( ! is_string( $slug ) || '' === $slug || ! function_exists( 'wc_get_orders' ) ) {
 			return;
 		}
-		$result = $this->run( $slug );
-		if ( ! $result['done'] && null === $result['error'] && $this->is_deleting( $slug ) ) {
+		// The next batch is queued before the work starts: a request that dies half way still leaves one behind.
+		if ( $this->is_deleting( $slug ) ) {
 			$this->schedule( $slug );
 		}
+		$this->run( $slug );
 	}
 
 	/**
@@ -319,7 +333,7 @@ final class Deletions {
 	 * @phpstan-impure
 	 */
 	private function expired( float $deadline ): bool {
-		return Decisions::out_of_time( $this->now(), $deadline );
+		return Decisions::out_of_time( $this->now(), $deadline ) || Memory::low();
 	}
 
 	/**

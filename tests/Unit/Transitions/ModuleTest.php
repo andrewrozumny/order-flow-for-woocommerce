@@ -102,6 +102,36 @@ final class ModuleTest extends TestCase {
 	}
 
 	/**
+	 * A form that names a status that does not exist keeps the order where it is (WooCommerce would make it pending),
+	 * and says so.
+	 */
+	public function test_unknown_posted_status_keeps_the_current_status_and_tells_the_person(): void {
+		Functions\when( 'wc_get_order' )->justReturn( $this->order( 'proof' ) );
+		$messages = array();
+		Functions\when( 'get_user_meta' )->justReturn( array() );
+		Functions\when( 'update_user_meta' )->alias(
+			static function ( int $user, string $key, array $items ) use ( &$messages ): bool {
+				unset( $user, $key );
+				foreach ( $items as $item ) {
+					$messages[] = $item['message'];
+				}
+				return true;
+			}
+		);
+		$_POST = array(
+			'order_status' => 'wc-does-not-exist',
+			'ofwc_comment' => 'x',
+		);
+
+		( new Module() )->prepare_order_save( 41 );
+
+		$this->assertSame( 'wc-proof', $_POST['order_status'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput,WordPress.Security.NonceVerification -- Reading back what the code under test wrote.
+		$this->assertSame( '', Context::comment(), 'nothing is recorded for a change that does not happen' );
+		$this->assertCount( 1, $messages );
+		$this->assertStringContainsString( 'does-not-exist', $messages[0] );
+	}
+
+	/**
 	 * No status change, no context.
 	 */
 	public function test_unchanged_status_sets_no_context(): void {

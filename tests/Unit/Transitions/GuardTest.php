@@ -196,14 +196,49 @@ final class GuardTest extends TestCase {
 	}
 
 	/**
-	 * Administrators are never restricted.
+	 * Administrators pass the role limits: a move no rule lists is theirs to make.
 	 */
-	public function test_administrator_is_not_checked(): void {
+	public function test_administrator_passes_the_role_limits(): void {
+		Functions\when( 'get_current_user_id' )->justReturn( 1 );
 		Functions\when( 'current_user_can' )->justReturn( true );
 		$order = $this->order( 'proof', 'completed' );
 		$order->shouldNotReceive( 'set_status' );
 
 		$this->guard()->inspect( $order );
+
+		$this->assertSame( array(), $this->notices );
+	}
+
+	/**
+	 * A rule that asks for a comment asks it of administrators too: saved without one, the old status is put back.
+	 */
+	public function test_administrator_needs_the_required_comment(): void {
+		$this->stub_rules( array( $this->rule( 'proof', 'packed', array( 'shop_manager' ), true ) ) );
+		Functions\when( 'get_current_user_id' )->justReturn( 1 );
+		Functions\when( 'current_user_can' )->justReturn( true );
+		$order = $this->order( 'proof', 'packed' );
+		$order->shouldReceive( 'set_status' )->once()->with( 'proof', false );
+
+		$this->guard()->inspect( $order );
+
+		$this->assertCount( 1, $this->notices );
+		$this->assertStringContainsString( 'needs a comment', $this->notices[0] );
+	}
+
+	/**
+	 * With the comment the administrator's change goes through.
+	 */
+	public function test_administrator_with_a_comment_goes_through(): void {
+		$this->stub_rules( array( $this->rule( 'proof', 'packed', array( 'shop_manager' ), true ) ) );
+		Functions\when( 'get_current_user_id' )->justReturn( 1 );
+		Functions\when( 'current_user_can' )->justReturn( true );
+		Context::set( 'Looks right', 1, false );
+		$order = $this->order( 'proof', 'packed' );
+		$order->shouldNotReceive( 'set_status' );
+
+		$this->guard()->inspect( $order );
+
+		$this->assertSame( array(), $this->notices );
 	}
 
 	/**

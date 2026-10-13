@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Admin;
 
+use OrderFlowWC\Statuses\Repository;
 use OrderFlowWC\Value;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -132,7 +133,20 @@ final class DocumentsTab implements TabInterface {
 		if ( $logo_id > 0 && ! wp_attachment_is_image( $logo_id ) ) {
 			$logo_id = 0;
 		}
-		$details = isset( $_POST['store_details'] ) && is_string( $_POST['store_details'] ) ? wp_kses_post( wp_unslash( $_POST['store_details'] ) ) : '';
+		$details = isset( $_POST['store_details'] ) && is_string( $_POST['store_details'] ) ? wp_unslash( $_POST['store_details'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Length is checked, then the text is cleaned with wp_kses_post() below.
+		if ( mb_strlen( $details ) > Repository::MAX_LONG_TEXT ) {
+			Page::flash(
+				'error',
+				sprintf(
+					/* translators: %s: maximum number of characters. */
+					__( '"Store details" is too long. The maximum is %s characters.', 'order-flow-for-woocommerce' ),
+					number_format_i18n( Repository::MAX_LONG_TEXT )
+				)
+			);
+			Page::redirect( $this->id() );
+			return;
+		}
+		$details = wp_kses_post( $details );
 
 		$settings = get_option( self::OPTION, array() );
 		$settings = is_array( $settings ) ? $settings : array();

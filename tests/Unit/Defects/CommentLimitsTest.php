@@ -142,4 +142,56 @@ final class CommentLimitsTest extends TestCase {
 			$this->assertLessThanOrEqual( 100000, strlen( (string) $clean[ $field ] ), $field );
 		}
 	}
+
+	/**
+	 * Saving refuses a text above the limit with a message that names the field, and stores nothing.
+	 */
+	public function test_save_refuses_too_long_text_with_a_clear_error(): void {
+		Functions\when( 'number_format_i18n' )->returnArg();
+		Functions\expect( 'update_option' )->never();
+
+		$result = ( new Repository() )->save(
+			array(
+				'slug'  => 'fresh',
+				'label' => str_repeat( 'L', Repository::MAX_SHORT_TEXT + 1 ),
+			)
+		);
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ofwc_text_too_long', $result->get_error_code() );
+		$this->assertStringContainsString( 'Label', $result->get_error_message() );
+
+		$result = ( new Repository() )->save(
+			array(
+				'slug'     => 'fresh',
+				'label'    => 'Fresh',
+				'pdf_text' => str_repeat( 'P', Repository::MAX_LONG_TEXT + 1 ),
+			)
+		);
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertStringContainsString( 'Text on the document', $result->get_error_message() );
+	}
+
+	/**
+	 * A text exactly at the limit is accepted.
+	 */
+	public function test_text_at_the_limit_is_accepted(): void {
+		$stored = array();
+		Functions\when( 'update_option' )->alias(
+			static function ( string $name, $value ) use ( &$stored ): bool {
+				$stored[ $name ] = $value;
+				return true;
+			}
+		);
+
+		$result = ( new Repository() )->save(
+			array(
+				'slug'  => 'fresh',
+				'label' => str_repeat( 'L', Repository::MAX_SHORT_TEXT ),
+			)
+		);
+
+		$this->assertTrue( $result );
+		$this->assertSame( Repository::MAX_SHORT_TEXT, strlen( $stored['ofwc_statuses']['fresh']['label'] ) );
+	}
 }

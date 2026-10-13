@@ -154,7 +154,8 @@ export async function s5( S, ctx ) {
 		ok( statusSlugs().includes( 'awaiting-approval' ), 'the status with an order is kept' );
 		eq( statusSlugs().length, 3, 'replace with a file that has no "statuses" section removed statuses' );
 		baseline( { hpos } );
-		await importConfig( admin, JSON.stringify( { format: 'order-flow-for-woocommerce', version: 1, statuses: [ st( 'only-one', 'Only one' ) ] } ), 'replace' );
+		await importConfig( admin, JSON.stringify( { format: 'order-flow-for-woocommerce', version: 1, statuses: [ ...before.map( ( slug ) => st( slug, `Kept ${ slug }` ) ), st( 'only-one', 'Only one' ) ] } ), 'replace' );
+		// Rules that mention a status that replace removes go with that status; here none is removed, so every rule stays.
 		eq( JSON.stringify( option( 'ofwc_transitions' ) ), rulesBefore, 'replace with a file that has no "transitions" section cleared the rules' );
 		logClean( mark, '5.2' );
 	}, 'live (5.2)' );
@@ -259,6 +260,9 @@ export async function s5( S, ctx ) {
 			update_option( 'woocommerce_ofwcx_settings', 'foreign' );
 			update_option( 'ofwcfoo', 'foreign' );
 			set_transient( 'other_ofwc_note', 'foreign', 300 );
+			add_option( 'ofwc_lock_99999', '1', '', 'no' );
+			update_user_meta( 1, 'ofwc_notices', array( array( 'type' => 'error', 'message' => 'x' ) ) );
+			update_user_meta( 1, 'my_ofwc_notices', 'foreign' );
 		` );
 		// something the plugin created in uploads
 		fs.mkdirSync( `${ SITE }/wp-content/uploads/ofwc-tmp`, { recursive: true } );
@@ -273,6 +277,9 @@ export async function s5( S, ctx ) {
 		ok( left.length === 0, `rows left after uninstall: ${ left.join( ', ' ) }` );
 		const foreign = sql( "SELECT option_name FROM wp_options WHERE option_name IN ('my_ofwc_option','xofwc_statuses','woocommerce_ofwcx_settings','ofwcfoo','_transient_other_ofwc_note') ORDER BY option_name" ).split( '\n' ).filter( Boolean );
 		eq( foreign.length, 5, `look-alike rows of other plugins: ${ foreign.join( ', ' ) }` );
+		const notices = sql( "SELECT COUNT(*) FROM wp_usermeta WHERE meta_key = 'ofwc_notices'" ).trim();
+		eq( notices, '0', 'the notice queue in user meta is removed' );
+		eq( sql( "SELECT COUNT(*) FROM wp_usermeta WHERE meta_key = 'my_ofwc_notices'" ).trim(), '1', 'a look-alike user meta row stays' );
 		const factsAfter = orderFacts( id );
 		eq( JSON.stringify( factsAfter.history ), JSON.stringify( factsBefore.history ), 'uninstall must keep the history meta' );
 		ok( factsAfter.notes.length >= factsBefore.notes.length, 'uninstall must keep the order notes' );
@@ -290,6 +297,7 @@ export async function s5( S, ctx ) {
 		wp( [ 'option', 'delete', 'xofwc_statuses' ] );
 		wp( [ 'option', 'delete', 'woocommerce_ofwcx_settings' ] );
 		wp( [ 'option', 'delete', 'ofwcfoo' ] );
+		wp( [ 'user', 'meta', 'delete', '1', 'my_ofwc_notices' ] );
 		logClean( mark, '5.4', { ignoreDb: true } );
 	}, 'live (5.4)' );
 }

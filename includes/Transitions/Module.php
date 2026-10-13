@@ -86,7 +86,7 @@ final class Module {
 	public function __construct( ?Repository $repository = null ) {
 		$this->repository = $repository ?? new Repository();
 		$this->rules      = new Rules( $this->repository );
-		$this->service    = new Service( $this->rules );
+		$this->service    = new Service( $this->rules, new OrderLock() );
 	}
 
 	/**
@@ -233,12 +233,42 @@ final class Module {
 			return;
 		}
 		$order = wc_get_order( (int) $order_id );
-		if ( ! $order instanceof WC_Order || Slug::strip( $order->get_status() ) === $posted ) {
+		if ( ! $order instanceof WC_Order ) {
+			return;
+		}
+		if ( ! in_array( $posted, self::INTERNAL_STATUSES, true ) && ! array_key_exists( Slug::prefixed( $posted ), wc_get_order_statuses() ) ) {
+			$this->refuse_unknown_status( $order, $posted );
+			return;
+		}
+		if ( Slug::strip( $order->get_status() ) === $posted ) {
 			return;
 		}
 
 		$comment = isset( $_POST[ self::COMMENT_FIELD ] ) && is_string( $_POST[ self::COMMENT_FIELD ] ) ? sanitize_textarea_field( wp_unslash( $_POST[ self::COMMENT_FIELD ] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by WooCommerce before this hook.
 		Context::set( trim( $comment ), get_current_user_id(), isset( $_POST[ self::NOTIFY_FIELD ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by WooCommerce before this hook.
+	}
+
+	/**
+	 * A form that names a status nobody registered (a stale tab, a status that was deleted, a forged request). WooCommerce
+	 * would quietly save the order as "pending". The form is changed to keep the status the order has, and the person is
+	 * told.
+	 *
+	 * @param WC_Order $order  Order being saved.
+	 * @param string   $posted Posted status slug that does not exist.
+	 */
+	private function refuse_unknown_status( WC_Order $order, string $posted ): void {
+		$current = Slug::strip( $order->get_status() );
+		$keep    = in_array( $current, self::NEW_ORDER_STATUSES, true ) ? 'pending' : $current;
+
+		$_POST['order_status'] = Slug::prefixed( $keep ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by WooCommerce before this hook.
+		Notices::add(
+			'error',
+			sprintf(
+				/* translators: %s: the status slug from the form. */
+				__( 'The status "%s" does not exist, so the order status was not changed.', 'order-flow-for-woocommerce' ),
+				$posted
+			)
+		);
 	}
 
 	/**

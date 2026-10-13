@@ -21,6 +21,12 @@ use OrderFlowWC\Tests\Unit\TestCase;
  * @covers \OrderFlowWC\Admin\StatusForm
  * @covers \OrderFlowWC\Admin\StatusDelete
  * @covers \OrderFlowWC\Admin\FormFields
+ *
+ * Separate processes: the test defines wc_get_order_statuses(), which would otherwise leak into
+ * Repository tests that rely on the function being absent.
+ *
+ * @runTestsInSeparateProcesses
+ * @preserveGlobalState disabled
  */
 final class StatusScreensTest extends TestCase {
 

@@ -33,9 +33,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Not checked, on purpose:
  *
  * - the system: gateways, webhooks, cron, Action Scheduler, WP-CLI, REST keys and application passwords (see Actor);
- * - administrators (`manage_options`);
  * - a refund that sets the order to Refunded. The money is already back with the customer;
  * - Order Flow's own bulk work (parking and restoring orders, deleting a status), which runs through system().
+ *
+ * Administrators (`manage_options`) pass the role limits of the rules, but a rule that asks for a comment asks it of
+ * every person, administrators included.
  */
 final class Guard {
 
@@ -212,17 +214,18 @@ final class Guard {
 	}
 
 	/**
-	 * Whether the rules apply to the current request: a person who is not an administrator.
+	 * Whether the rules apply to the current request: a person at the keyboard. Administrators are let through the role
+	 * limits by Rules::is_allowed(); the required comment still reaches them.
 	 *
 	 * @param WC_Order|null $order Order being saved, when known.
 	 */
 	private function enforced( ?WC_Order $order = null ): bool {
-		$apply = Actor::is_person() && ! current_user_can( 'manage_options' );
+		$apply = Actor::is_person();
 
 		/**
 		 * Filters whether the transition rules are enforced for the current change.
 		 *
-		 * @param bool          $apply Whether the request is a person who is not an administrator.
+		 * @param bool          $apply Whether the request is a person at the keyboard.
 		 * @param WC_Order|null $order The order being saved, null for a REST pre-check.
 		 */
 		return Value::bool( apply_filters( 'ofwc_enforce_transition_rules', $apply, $order ) );

@@ -89,7 +89,7 @@ final class Buttons {
 		echo '<p>';
 		foreach ( $available as $status ) {
 			printf(
-				'<a href="%1$s" class="button" style="margin:0 6px 6px 0">%2$s</a>',
+				'<a href="%1$s" class="button ofwc-doc-button">%2$s</a>',
 				esc_url( Documents::url( $order, $status['slug'] ) ),
 				/* translators: %s: status label. */
 				esc_html( sprintf( __( 'Download: %s', 'order-flow-for-woocommerce' ), $status['label'] ) )

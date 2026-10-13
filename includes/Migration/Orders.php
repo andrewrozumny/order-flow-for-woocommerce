@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OrderFlowWC\Migration;
 
 use OrderFlowWC\Statuses\Repository;
+use OrderFlowWC\Statuses\Slug;
 use OrderFlowWC\Value;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -50,6 +51,13 @@ final class Orders {
 	 * @var callable|null
 	 */
 	private $clock;
+
+	/**
+	 * Whether the restore batch of this request ran to its end.
+	 *
+	 * @var bool
+	 */
+	private bool $batch_finished = true;
 
 	/**
 	 * Constructor.
@@ -133,7 +141,7 @@ final class Orders {
 				foreach ( array_column( $this->repository->all(), 'slug' ) as $slug ) {
 					while ( ! $this->expired( $deadline ) ) {
 						$ids = $this->ids(
-							array( 'status' => 'wc-' . $slug ),
+							array( 'status' => Slug::prefixed( $slug ) ),
 							$failed
 						);
 						if ( array() === $ids ) {
@@ -148,6 +156,7 @@ final class Orders {
 							} else {
 								$failed[] = $order_id;
 							}
+							Memory::relax();
 						}
 					}
 				}
@@ -202,13 +211,10 @@ final class Orders {
 				while ( ! $this->expired( $deadline ) ) {
 					$ids = $this->ids(
 						array(
-							'status'     => 'any',
-							'meta_query' => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Background restore after activation.
-								array(
-									'key'     => self::META,
-									'compare' => 'EXISTS',
-								),
-							),
+							'status'       => 'any',
+							// Not `meta_query`: the legacy posts store drops it and would return every order.
+							'meta_key'     => self::META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Background restore after activation.
+							'meta_compare' => 'EXISTS',
 						),
 						$skip
 					);
@@ -221,6 +227,7 @@ final class Orders {
 							return;
 						}
 						$outcome = $this->restore_order( $order_id, $known );
+						Memory::relax();
 						if ( Decisions::RESTORE === $outcome ) {
 							++$restored;
 						} elseif ( Decisions::RELEASE === $outcome ) {
@@ -298,7 +305,17 @@ final class Orders {
 				$skip[] = Value::int( $id );
 			}
 		}
-		$result = $this->restore_batch( $skip );
+		// If the request dies half way (memory, a host limit), the next batch is still queued, with the same skip list.
+		$this->batch_finished = false;
+		register_shutdown_function(
+			function () use ( $skip ): void {
+				if ( ! $this->batch_finished ) {
+					$this->enqueue( array( 'skip' => $skip ) );
+				}
+			}
+		);
+		$result               = $this->restore_batch( $skip );
+		$this->batch_finished = true;
 		if ( ! $result['done'] ) {
 			$this->enqueue( array( 'skip' => $result['skip'] ) );
 		}
@@ -404,7 +421,7 @@ final class Orders {
 	 * @phpstan-impure
 	 */
 	private function expired( float $deadline ): bool {
-		return Decisions::out_of_time( $this->now(), $deadline );
+		return Decisions::out_of_time( $this->now(), $deadline ) || Memory::low();
 	}
 
 	/**

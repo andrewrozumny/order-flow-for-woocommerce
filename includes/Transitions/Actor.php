@@ -37,7 +37,7 @@ final class Actor {
 		 * Filters whether the current request is treated as a person for the transition rules.
 		 *
 		 * Return true to enforce the rules in a context Order Flow treats as the system, false to let a
-		 * request through. Administrators are never restricted, whatever this returns.
+		 * request through. Administrators pass the role limits of the rules in any case; a required comment applies to them too.
 		 *
 		 * @param bool $person Whether the request is a logged-in person at the keyboard.
 		 */

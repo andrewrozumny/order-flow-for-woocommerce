@@ -376,4 +376,82 @@ final class ConfigTest extends TestCase {
 		$this->assertInstanceOf( \WP_Error::class, $mode );
 		$this->assertSame( 'ofwc_import_mode', $mode->get_error_code() );
 	}
+
+	/**
+	 * Replace mode with a file that has no statuses section leaves every status alone.
+	 */
+	public function test_replace_without_statuses_section_keeps_statuses(): void {
+		$this->seed();
+		$doc    = array(
+			'format'      => 'order-flow-for-woocommerce',
+			'version'     => 1,
+			'transitions' => array(),
+		);
+		$result = ( new Importer() )->import( $doc, Importer::MODE_REPLACE );
+
+		$this->assertInstanceOf( ImportResult::class, $result );
+		$this->assertSame( array(), $result->removed );
+		Repository::flush_cache();
+		$repo = new Repository();
+		$this->assertNotNull( $repo->get( 'proof' ) );
+		$this->assertNotNull( $repo->get( 'printing' ) );
+	}
+
+	/**
+	 * Replace mode with a file that has no transitions section leaves every rule alone; an empty section clears them.
+	 */
+	public function test_replace_without_transitions_section_keeps_rules(): void {
+		$this->seed();
+		$doc    = array(
+			'format'   => 'order-flow-for-woocommerce',
+			'version'  => 1,
+			'statuses' => array(
+				array(
+					'slug'  => 'proof',
+					'label' => 'Proof sent',
+				),
+				array(
+					'slug'  => 'printing',
+					'label' => 'Printing',
+				),
+			),
+		);
+		$result = ( new Importer() )->import( $doc, Importer::MODE_REPLACE );
+
+		$this->assertInstanceOf( ImportResult::class, $result );
+		$this->assertSame( 2, $result->rules_saved );
+		$this->assertCount( 2, ( new Rules() )->all() );
+
+		$doc['transitions'] = array();
+		( new Importer() )->import( $doc, Importer::MODE_REPLACE );
+		$this->assertCount( 0, ( new Rules() )->all(), 'An explicit empty section replaces the rules' );
+	}
+
+	/**
+	 * A status text longer than the limit is skipped with a reason; so is a huge store details text.
+	 */
+	public function test_import_refuses_oversized_texts(): void {
+		$doc    = array(
+			'format'   => 'order-flow-for-woocommerce',
+			'version'  => 1,
+			'statuses' => array(
+				array(
+					'slug'  => 'big-one',
+					'label' => str_repeat( 'L', 900000 ),
+				),
+				array(
+					'slug'  => 'fine-one',
+					'label' => 'Fine',
+				),
+			),
+			'settings' => array( 'store_details' => str_repeat( 'D', 200000 ) ),
+		);
+		$result = ( new Importer() )->import( $doc, Importer::MODE_MERGE );
+
+		$this->assertInstanceOf( ImportResult::class, $result );
+		$this->assertSame( array( 'fine-one' ), $result->added );
+		$this->assertArrayHasKey( 'big-one', $result->skipped );
+		$this->assertArrayHasKey( 'store_details', $result->skipped );
+		$this->assertFalse( $result->settings_updated );
+	}
 }

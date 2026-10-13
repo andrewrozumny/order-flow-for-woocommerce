@@ -29,6 +29,7 @@ abstract class TestCase extends BrainMonkeyTestCase {
 		Functions\stubEscapeFunctions();
 		Functions\when( 'sanitize_text_field' )->returnArg();
 		Functions\when( 'wp_kses_post' )->returnArg();
+		Functions\when( 'number_format_i18n' )->returnArg();
 		Functions\when( 'is_wp_error' )->alias(
 			static function ( $thing ): bool {
 				return $thing instanceof \WP_Error;

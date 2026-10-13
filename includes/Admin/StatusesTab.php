@@ -108,7 +108,13 @@ final class StatusesTab implements TabInterface {
 		check_admin_referer( self::ACTION_SAVE );
 
 		$editing = isset( $_POST['editing'] ) && is_string( $_POST['editing'] ) ? sanitize_key( wp_unslash( $_POST['editing'] ) ) : '';
-		$input   = array(
+		if ( strlen( $editing ) > Repository::MAX_SLUG_LENGTH ) {
+			// No status has a slug this long: nothing to edit, and the value must not travel in the redirect.
+			Page::flash( 'error', __( 'This status does not exist.', 'order-flow-for-woocommerce' ) );
+			Page::redirect( 'statuses' );
+			return;
+		}
+		$input = array(
 			'label'         => isset( $_POST['label'] ) && is_string( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '',
 			'slug'          => isset( $_POST['slug'] ) && is_string( $_POST['slug'] ) ? sanitize_text_field( wp_unslash( $_POST['slug'] ) ) : '',
 			'color'         => isset( $_POST['color'] ) && is_string( $_POST['color'] ) ? sanitize_text_field( wp_unslash( $_POST['color'] ) ) : '',
@@ -133,7 +139,7 @@ final class StatusesTab implements TabInterface {
 
 		$result = $this->repository->save( $input, '' === $editing ? null : $editing );
 		if ( $result instanceof WP_Error ) {
-			set_transient( 'ofwc_form_' . get_current_user_id(), $input, MINUTE_IN_SECONDS * 5 );
+			set_transient( 'ofwc_form_' . get_current_user_id(), $this->repository->sanitize( $input ), MINUTE_IN_SECONDS * 5 );
 			Page::flash( 'error', $result->get_error_message() );
 			$args = '' === $editing ? array( 'view' => 'add' ) : array(
 				'view'   => 'edit',
@@ -157,6 +163,12 @@ final class StatusesTab implements TabInterface {
 		$slug   = isset( $_POST['status'] ) && is_string( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : '';
 		$target = isset( $_POST['target'] ) && is_string( $_POST['target'] ) ? sanitize_key( wp_unslash( $_POST['target'] ) ) : '';
 		$notify = isset( $_POST['notify_customers'] );
+		if ( strlen( $slug ) > Repository::MAX_SLUG_LENGTH ) {
+			// No status has a slug this long: nothing to delete, and the value must not travel in the redirect.
+			Page::flash( 'error', __( 'This status does not exist.', 'order-flow-for-woocommerce' ) );
+			Page::redirect( 'statuses' );
+			return;
+		}
 
 		// The orders move as the shop's own work, whoever may configure Order Flow.
 		$result = null;

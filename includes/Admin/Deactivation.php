@@ -65,6 +65,7 @@ final class Deactivation {
 	public function register(): void {
 		add_filter( 'plugin_action_links_' . plugin_basename( OFWC_FILE ), array( $this, 'filter_action_links' ), 20 );
 		add_action( 'admin_menu', array( $this, 'add_page' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'handle' ) );
 		add_action( 'admin_post_' . self::RUN_ACTION, array( $this, 'handle_run' ) );
 		add_action( 'load-plugins.php', array( $this, 'intercept_bulk_deactivate' ) );
@@ -115,6 +116,16 @@ final class Deactivation {
 	}
 
 	/**
+	 * Load the stylesheet on the deactivation screen only.
+	 */
+	public function enqueue(): void {
+		$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen lookup.
+		if ( self::PAGE === $page ) {
+			wp_enqueue_style( 'ofwc-admin', OFWC_URL . 'resources/admin.css', array(), OFWC_VERSION );
+		}
+	}
+
+	/**
 	 * Render the screen.
 	 */
 	public function render(): void {
@@ -144,7 +155,7 @@ final class Deactivation {
 		}
 
 		echo '<p>' . esc_html__( 'These orders are in a status created by this plugin:', 'order-flow-for-woocommerce' ) . '</p>';
-		echo '<table class="wp-list-table widefat striped" style="max-width:480px"><thead><tr><th scope="col">' . esc_html__( 'Status', 'order-flow-for-woocommerce' ) . '</th><th scope="col">' . esc_html__( 'Orders', 'order-flow-for-woocommerce' ) . '</th></tr></thead><tbody>';
+		echo '<table class="wp-list-table widefat striped ofwc-counts"><thead><tr><th scope="col">' . esc_html__( 'Status', 'order-flow-for-woocommerce' ) . '</th><th scope="col">' . esc_html__( 'Orders', 'order-flow-for-woocommerce' ) . '</th></tr></thead><tbody>';
 		foreach ( $counts as $slug => $count ) {
 			$label = isset( $statuses[ $slug ] ) ? $statuses[ $slug ]['label'] : $slug;
 			printf( '<tr><td>%1$s</td><td>%2$s</td></tr>', esc_html( $label ), esc_html( (string) $count ) );
@@ -154,11 +165,11 @@ final class Deactivation {
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION, '_ofwc_nonce' );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '">';
-		echo '<fieldset style="margin:1.5em 0"><legend class="screen-reader-text">' . esc_html__( 'What should happen to these orders?', 'order-flow-for-woocommerce' ) . '</legend>';
+		echo '<fieldset class="ofwc-choice"><legend class="screen-reader-text">' . esc_html__( 'What should happen to these orders?', 'order-flow-for-woocommerce' ) . '</legend>';
 		echo '<p><label><input type="radio" name="choice" value="' . esc_attr( Decisions::CHOICE_KEEP ) . '" checked> <strong>' . esc_html__( 'Keep orders in their statuses', 'order-flow-for-woocommerce' ) . '</strong></label><br>';
-		echo '<span class="description" style="margin-left:24px;display:inline-block">' . esc_html__( 'While the plugin is inactive WooCommerce does not know these statuses, so the orders will be missing from the usual order lists. The orders are not lost: they come back as soon as you activate the plugin again. If you delete the plugin instead, they are moved to On hold.', 'order-flow-for-woocommerce' ) . '</span></p>';
+		echo '<span class="description ofwc-choice-note">' . esc_html__( 'While the plugin is inactive WooCommerce does not know these statuses, so the orders will be missing from the usual order lists. The orders are not lost: they come back as soon as you activate the plugin again. If you delete the plugin instead, they are moved to On hold.', 'order-flow-for-woocommerce' ) . '</span></p>';
 		echo '<p><label><input type="radio" name="choice" value="' . esc_attr( Decisions::CHOICE_MOVE ) . '"> <strong>' . esc_html__( 'Move them to On hold now and restore them when I reactivate', 'order-flow-for-woocommerce' ) . '</strong></label><br>';
-		echo '<span class="description" style="margin-left:24px;display:inline-block">' . esc_html__( 'Every order gets a note, is moved to On hold and stays visible in WooCommerce. Nothing else changes: no emails are sent and stock levels, sales counts and coupon usage stay as they are. Large shops see a progress page; keep it open until it finishes. When you activate the plugin again, each order that is still in On hold returns to its previous status in the background. An order whose status you changed in the meantime keeps its new status.', 'order-flow-for-woocommerce' ) . '</span></p>';
+		echo '<span class="description ofwc-choice-note">' . esc_html__( 'Every order gets a note, is moved to On hold and stays visible in WooCommerce. Nothing else changes: no emails are sent and stock levels, sales counts and coupon usage stay as they are. Large shops see a progress page; keep it open until it finishes. When you activate the plugin again, each order that is still in On hold returns to its previous status in the background. An order whose status you changed in the meantime keeps its new status.', 'order-flow-for-woocommerce' ) . '</span></p>';
 		echo '</fieldset>';
 		submit_button( __( 'Deactivate plugin', 'order-flow-for-woocommerce' ), 'primary', 'submit', false );
 		printf( ' <a class="button" href="%1$s">%2$s</a>', esc_url( admin_url( 'plugins.php' ) ), esc_html__( 'Cancel', 'order-flow-for-woocommerce' ) );

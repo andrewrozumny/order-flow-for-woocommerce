@@ -31,11 +31,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class Attachments {
 
-	public const DIR        = 'ofwc-tmp';
+	public const DIR        = TempDirectory::DIR;
 	public const MAX_AGE    = DAY_IN_SECONDS;
 	public const CRON_HOOK  = 'ofwc_cleanup_tmp';
-	public const HTACCESS   = "<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nDeny from all\n</IfModule>\n";
-	public const INDEX_FILE = "<?php\n// Silence is golden.\n";
+	public const HTACCESS   = TempDirectory::HTACCESS;
+	public const INDEX_FILE = TempDirectory::INDEX_FILE;
 
 	/**
 	 * PDF renderer.
@@ -207,7 +207,7 @@ final class Attachments {
 		}
 		list( $pdf, $name ) = $this->render( $order, $slug, $config );
 		if ( '' === $pdf ) {
-			$this->failure = __( 'The PDF could not be created.', 'order-flow-for-woocommerce' );
+			$this->failure = Generator::explain( $this->generator->failure() );
 			return '';
 		}
 		// A random subdirectory keeps the path unguessable while the customer sees a clean file name.
@@ -251,16 +251,7 @@ final class Attachments {
 	 * @return string[] Paths without trailing slash.
 	 */
 	private function candidate_roots(): array {
-		$roots = array();
-		$tmp   = get_temp_dir();
-		if ( '' !== $tmp ) {
-			$roots[] = untrailingslashit( $tmp ) . '/' . self::DIR;
-		}
-		$uploads = wp_upload_dir();
-		if ( '' !== $uploads['basedir'] ) {
-			$roots[] = untrailingslashit( $uploads['basedir'] ) . '/' . self::DIR;
-		}
-		return $roots;
+		return ( new TempDirectory() )->roots();
 	}
 
 	/**
@@ -269,21 +260,7 @@ final class Attachments {
 	 * @return string Path without trailing slash, '' when none can be written.
 	 */
 	private function directory(): string {
-		foreach ( $this->candidate_roots() as $dir ) {
-			if ( ! wp_mkdir_p( $dir ) || ! wp_is_writable( $dir ) ) {
-				continue;
-			}
-			// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Protecting a directory.
-			if ( ! file_exists( $dir . '/index.php' ) ) {
-				file_put_contents( $dir . '/index.php', self::INDEX_FILE );
-			}
-			if ( ! file_exists( $dir . '/.htaccess' ) ) {
-				file_put_contents( $dir . '/.htaccess', self::HTACCESS );
-			}
-			// phpcs:enable
-			return $dir;
-		}
-		return '';
+		return ( new TempDirectory() )->path();
 	}
 
 	/**

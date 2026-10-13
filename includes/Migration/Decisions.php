@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OrderFlowWC\Migration;
 
+use OrderFlowWC\Statuses\Slug;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -60,9 +62,7 @@ final class Decisions {
 			return null;
 		}
 		$slug = strtolower( trim( $stored ) );
-		if ( str_starts_with( $slug, 'wc-' ) ) {
-			$slug = substr( $slug, 3 );
-		}
+		$slug = Slug::strip( $slug );
 		return '' !== $slug && in_array( $slug, $known, true ) ? $slug : null;
 	}
 

@@ -41,11 +41,21 @@ final class FakeShop {
 	public static array $log = array();
 
 	/**
+	 * Queries seen since reset(). A loop that never ends stops here instead of running for twenty minutes.
+	 *
+	 * @var int
+	 */
+	public static int $queries = 0;
+
+	public const MAX_QUERIES = 20000;
+
+	/**
 	 * Reset to an empty shop.
 	 */
 	public static function reset(): void {
-		self::$orders = array();
-		self::$log    = array();
+		self::$orders  = array();
+		self::$log     = array();
+		self::$queries = 0;
 	}
 
 	/**
@@ -77,13 +87,22 @@ final class FakeShop {
 	 *
 	 * @param array<string, mixed> $args Arguments.
 	 * @return mixed
+	 * @throws \LogicException For `meta_query` (not supported by the legacy posts store) and for a loop without end.
 	 */
 	public static function query( array $args ) {
+		if ( ++self::$queries > self::MAX_QUERIES ) {
+			throw new \LogicException( 'more than ' . self::MAX_QUERIES . ' order queries: the code under test loops without end' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Test double.
+		}
 		$status = isset( $args['status'] ) && is_string( $args['status'] ) ? $args['status'] : 'any';
 		$offset = isset( $args['offset'] ) && is_int( $args['offset'] ) ? $args['offset'] : 0;
 		$meta   = null;
-		if ( isset( $args['meta_query'][0]['key'] ) ) {
-			$meta = $args['meta_query'][0]['key'];
+		// The legacy posts store of WooCommerce drops `meta_query` and raises a "called incorrectly" notice, so a
+		// query that uses it must fail here. `meta_key` with `meta_compare` works in both stores.
+		if ( isset( $args['meta_query'] ) ) {
+			throw new \LogicException( 'meta_query is not supported by the legacy posts order store' );
+		}
+		if ( isset( $args['meta_key'] ) && is_string( $args['meta_key'] ) ) {
+			$meta = $args['meta_key'];
 		}
 		$ids = array();
 		foreach ( self::$orders as $id => $order ) {

@@ -31,12 +31,21 @@ final class Service {
 	private Rules $rules;
 
 	/**
+	 * Lock that lets one change at a time through for an order; null means no locking (checks only, tests).
+	 *
+	 * @var OrderLock|null
+	 */
+	private ?OrderLock $lock;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param Rules|null $rules Transition rules.
+	 * @param Rules|null     $rules Transition rules.
+	 * @param OrderLock|null $lock  Per-order lock; the module passes the real one.
 	 */
-	public function __construct( ?Rules $rules = null ) {
+	public function __construct( ?Rules $rules = null, ?OrderLock $lock = null ) {
 		$this->rules = $rules ?? new Rules();
+		$this->lock  = $lock;
 	}
 
 	/**
@@ -53,8 +62,34 @@ final class Service {
 		$to      = Slug::strip( $to );
 		$user_id = $user_id ?? get_current_user_id();
 		$comment = Comment::clean( $comment );
-		$from    = $order->get_status();
 
+		if ( null === $this->lock ) {
+			return $this->apply( $order, $to, $comment, $user_id, $notify );
+		}
+		$token = $this->lock->acquire( $order->get_id() );
+		if ( null === $token ) {
+			return new WP_Error( 'ofwc_order_busy', __( 'This order is being changed right now. Try again in a moment.', 'order-flow-for-woocommerce' ) );
+		}
+		try {
+			// The status is read again inside the lock: a change that ran while this request waited has moved it.
+			return $this->apply( $this->lock->fresh( $order ), $to, $comment, $user_id, $notify );
+		} finally {
+			$this->lock->release( $order->get_id(), $token );
+		}
+	}
+
+	/**
+	 * Check and perform a change, the lock (if any) is held by the caller.
+	 *
+	 * @param WC_Order $order   Order, as the database has it.
+	 * @param string   $to      Target status slug without prefix.
+	 * @param string   $comment Cleaned comment.
+	 * @param int      $user_id Acting user.
+	 * @param bool     $notify  Whether the comment may appear in the email to the customer.
+	 * @return true|WP_Error
+	 */
+	private function apply( WC_Order $order, string $to, string $comment, int $user_id, bool $notify ) {
+		$from  = $order->get_status();
 		$error = $this->check( $from, $to, $comment, $user_id );
 		if ( null !== $error ) {
 			return $error;

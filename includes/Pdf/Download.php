@@ -85,9 +85,10 @@ final class Download {
 			wp_die( esc_html__( 'You are not allowed to download this document.', 'order-flow-for-woocommerce' ), '', array( 'response' => 403 ) );
 		}
 
+		$this->answer_clearly_when_the_server_gives_up();
 		$pdf = $this->generator->render_pdf( $order, $slug );
 		if ( '' === $pdf ) {
-			wp_die( esc_html__( 'The PDF could not be created.', 'order-flow-for-woocommerce' ), '', array( 'response' => 500 ) );
+			$this->refuse( $this->generator->failure() );
 		}
 
 		nocache_headers();
@@ -97,5 +98,54 @@ final class Download {
 		header( 'X-Content-Type-Options: nosniff' );
 		echo $pdf; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Binary PDF.
 		exit;
+	}
+
+	/**
+	 * Explain why no PDF was made and stop.
+	 *
+	 * @param string $failure One of the Generator::FAILURE_ constants.
+	 */
+	private function refuse( string $failure ): void {
+		wp_die( esc_html( Generator::explain( $failure ) ), '', array( 'response' => Generator::FAILURE_RENDER === $failure ? 500 : 503 ) );
+	}
+
+	/**
+	 * A document that still exhausts memory or time ends in a fatal error, which PHP cannot be asked to survive. WordPress
+	 * then shows its "critical error" page; this makes that page say what happened. Where the fatal error handler of
+	 * WordPress is switched off, a shutdown function prints the same sentence.
+	 */
+	private function answer_clearly_when_the_server_gives_up(): void {
+		$message = Generator::explain( Generator::FAILURE_SIZE );
+		add_filter(
+			'wp_php_error_message',
+			static function () use ( $message ): string {
+				return '<p>' . esc_html( $message ) . '</p>';
+			}
+		);
+		add_filter(
+			'wp_php_error_args',
+			static function ( $args ): array {
+				return array_merge( is_array( $args ) ? $args : array(), array( 'response' => 503 ) );
+			}
+		);
+		if ( function_exists( 'wp_is_fatal_error_handler_enabled' ) && wp_is_fatal_error_handler_enabled() ) {
+			return;
+		}
+		register_shutdown_function(
+			static function () use ( $message ): void {
+				$error = error_get_last();
+				if ( null === $error || ! in_array( $error['type'], array( E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR ), true ) ) {
+					return;
+				}
+				while ( ob_get_level() > 0 ) {
+					ob_end_clean();
+				}
+				if ( ! headers_sent() ) {
+					http_response_code( 503 );
+					header( 'Content-Type: text/plain; charset=utf-8' );
+				}
+				echo esc_html( $message );
+			}
+		);
 	}
 }
