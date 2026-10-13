@@ -4,7 +4,7 @@ Tags: woocommerce, order status, custom order status, pdf, workflow
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -200,6 +200,16 @@ Yes, per site and network-wide. Each site has its own statuses, rules and histor
 
 == Changelog ==
 
+= 0.1.1 =
+* Hardening release, settings and orders carry over.
+* Configuration for administrators only by default; transition rules enforced on every change a person makes, including WooCommerce bulk actions, order list buttons, new orders and REST with the login cookie.
+* Transition comments reach customers only when you tick "Send this comment to the customer".
+* Hidden statuses are masked in customer emails, the Store API and REST.
+* dompdf ships under the plugin's own namespace, so other PDF plugins cannot clash with it.
+* Deactivation, restore and status deletion run in batches without touching stock or emailing customers; reactivation no longer reverts orders that changed meanwhile.
+* Uninstall moves orders out of custom statuses into On hold and removes all plugin data on every site.
+* Multisite network activation, legacy order storage (HPOS off) and many edge cases fixed.
+
 = 0.1.0 =
 * First release.
 * Custom order statuses with label, color, icon, paid, stock and My Account options.
@@ -212,6 +222,9 @@ Yes, per site and network-wide. Each site has its own statuses, rules and histor
 * HPOS compatible.
 
 == Upgrade Notice ==
+
+= 0.1.1 =
+Security and reliability release: configuration for administrators only, rules enforced everywhere, safer deactivation and uninstall. Recommended for everyone.
 
 = 0.1.0 =
 First release.

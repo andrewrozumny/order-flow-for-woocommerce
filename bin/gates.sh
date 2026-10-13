@@ -7,7 +7,7 @@
 # Heavy gates run one after another on purpose: they share the machine with the lab.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-export COMPOSER_ROOT_VERSION="${COMPOSER_ROOT_VERSION:-0.1.0}"
+export COMPOSER_ROOT_VERSION="${COMPOSER_ROOT_VERSION:-0.1.1}"
 
 gates=(
 	"composer-validate:composer validate --strict --no-check-publish"

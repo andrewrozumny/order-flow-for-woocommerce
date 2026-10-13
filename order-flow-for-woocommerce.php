@@ -3,7 +3,7 @@
  * Plugin Name:       Order Flow for WooCommerce
  * Plugin URI:        https://helpmybiz.org
  * Description:       Custom WooCommerce order statuses with transition rules, status history, status emails and PDF documents.
- * Version:           0.1.0
+ * Version:           0.1.1
  * Requires at least: 6.6
  * Requires PHP:      8.1
  * Requires Plugins:  woocommerce
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'OFWC_VERSION', '0.1.0' );
+define( 'OFWC_VERSION', '0.1.1' );
 define( 'OFWC_FILE', __FILE__ );
 define( 'OFWC_PATH', plugin_dir_path( __FILE__ ) );
 define( 'OFWC_URL', plugin_dir_url( __FILE__ ) );
