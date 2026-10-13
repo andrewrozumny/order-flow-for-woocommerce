@@ -24,3 +24,4 @@
 /README.md export-ignore
 /CHANGELOG.md export-ignore
 *.zip
+/psalm.xml.dist export-ignore
